@@ -233,6 +233,38 @@
     gap: 6px;
   }
 
+  .fs-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0,0,0,0.3);
+    border: 1px dashed var(--panel-border);
+    padding: 8px 14px;
+    margin-top: 24px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .fs-status-bar.connected {
+    border: 1px solid #4ade80;
+    color: #4ade80;
+  }
+  .fs-status-bar.unsupported {
+    border: 1px dashed #f59e0b;
+    color: #f59e0b;
+  }
+  .fs-status-bar #fs-status-actions { margin-left: auto; }
+  .fs-action-link {
+    background: transparent;
+    border: 1px solid currentColor;
+    color: inherit;
+    padding: 3px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+  }
+  .fs-action-link:hover { background: rgba(255,255,255,0.05); }
+
   .admin-actions {
     position: sticky;
     bottom: 0;
@@ -242,7 +274,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 24px;
+    margin-top: 8px;
+  }
+  .admin-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
   .admin-btn {
     background: rgba(0,0,0,0.3);
@@ -323,7 +359,8 @@
   <div class="admin-info-box">
     <strong>적용 흐름</strong><br>
     · <strong>로컬 적용</strong>: 이 브라우저의 <code>localStorage</code>에만 반영. 본인 계정에서만 변경된 값을 봅니다.<br>
-    · <strong>balance-defaults.js 다운로드</strong>: 새 기본값 파일을 다운로드 → repo의 <code>balance-defaults.js</code>에 덮어쓰기 → git commit + push → GitHub Pages 빌드 후 모든 사용자가 새 기본값을 봅니다.
+    · <strong>💾 프로젝트 파일에 저장 (권장)</strong>: 최초 1회 파일 피커로 repo의 <code>balance-defaults.js</code>를 선택하면, 이후엔 클릭만으로 직접 덮어씌움. 저장 후 Claude에게 <em>"커밋해줘"</em> 요청하면 자동 push → 모든 사용자에 패치 적용. (Chrome/Edge 전용)<br>
+    · <strong>📥 다운로드</strong>: 직접 저장 미지원 브라우저용 Fallback. 다운로드 → 수동으로 repo에 덮어쓰기 → Claude 요청.
   </div>
 
   <div class="admin-tabs">
@@ -435,9 +472,15 @@
     </div>
   </div>
 
+  <div class="fs-status-bar" id="fs-status-bar">
+    <span id="fs-status-text">파일 연결 확인 중...</span>
+    <span id="fs-status-actions"></span>
+  </div>
+
   <div class="admin-actions">
+    <button class="admin-btn success" id="ad-save-direct">💾 프로젝트 파일에 저장 (직접 쓰기)</button>
     <button class="admin-btn primary" id="ad-apply-local">로컬 적용 (이 브라우저)</button>
-    <button class="admin-btn success" id="ad-export-defaults">📥 balance-defaults.js 다운로드 (전체 패치)</button>
+    <button class="admin-btn" id="ad-export-defaults">📥 다운로드 (Fallback)</button>
     <button class="admin-btn" id="ad-export-json">JSON Export</button>
     <button class="admin-btn" id="ad-import">JSON Import</button>
     <button class="admin-btn danger" id="ad-reset">기본값 복원</button>
