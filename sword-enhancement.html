@@ -4527,10 +4527,19 @@ if (navHamburgerEl && navBarEl) {
 //  BOOT
 // ============================================================
 function bootGame() {
+  // Use raw localStorage check to detect "first visit" instead of state.log.length.
+  // If loadState() returns default due to a parse error, we MUST NOT overwrite
+  // the underlying saved data with defaults — that creates a self-perpetuating
+  // empty-state bug (refresh → default → save default → refresh → default ...).
+  const raw = SAVE_KEY ? localStorage.getItem(SAVE_KEY) : null;
   state = loadState();
-  if (state.log.length === 0) {
-    logMsg(`★ ${forge && forge.name ? forge.name : '대장간'} 모험 시작! 1,000,000 골드로 검을 강화하세요.`, 'info');
+  if (!raw) {
+    logMsg(`★ ${forge && forge.name ? forge.name : '대장간'} 모험 시작! ${(balance.startGold || 0).toLocaleString()} 골드로 검을 강화하세요.`, 'info');
     saveState();
+  } else if (state.log.length === 0) {
+    // Loaded an existing save but it has no log (legacy/edge case). Don't write,
+    // just add a session log entry.
+    logMsg(`★ ${forge && forge.name ? forge.name : '대장간'} 진행 이어가기.`, 'info');
   }
   // Auto-resolve any rentals whose timer expired (offline progression)
   const result = resolveRentals();

@@ -968,8 +968,13 @@ function bootRentalPage() {
     }
   }
   // Generate any new applicants for collection
-  maybeGenerateApplicants(Date.now());
-  saveState();
+  const newApps = maybeGenerateApplicants(Date.now());
+  // CRITICAL: only save if something actually changed.
+  // Unconditional saveState() right after loadState() can overwrite valid saved
+  // data with defaults if loadState() ever returned a default fallback (e.g. due
+  // to a transient parse error) — creating a self-perpetuating empty-state bug
+  // that also breaks sword-enhancement.html on the next visit.
+  if (result.didChange || newApps > 0) saveState();
   render();
 }
 
