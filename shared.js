@@ -18,15 +18,15 @@ function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
 // =============== BALANCE ===============
 const BALANCE_DEFAULTS = {
   startGold: 1000000,
-  costBase: 100, costExp: 1.55, costMult: 1,
+  costBase: 1000, costExp: 1.55, costMult: 1,
   sellAnchor: 1000000, sellAnchorLvl: 10, sellRatio: 1.5,
   shopStone: 100000, shopProtect1: 2000000, shopProtect10: 15000000,
   fragmentBonus: 10, stoneBonusEach: 5, stoneMaxStack: 3,
-  destroyRefundRate: 0.2, fragmentDropMin: 2, fragmentDropMax: 4,
+  destroyRefundRate: 0.2, fragmentDropMin: 1, fragmentDropMax: 5,
   failureRules: [
-    { maxLevel: 3,  maintain: 1.0, downgrade: 0.0, destroy: 0.0 },
-    { maxLevel: 9,  maintain: 0.7, downgrade: 0.3, destroy: 0.0 },
-    { maxLevel: 99, maintain: 0.5, downgrade: 0.3, destroy: 0.2 }
+    { maxLevel: 10, maintain: 1.0, downgrade: 0.0, destroy: 0.0 },
+    { maxLevel: 20, maintain: 0.7, downgrade: 0.2, destroy: 0.1 },
+    { maxLevel: 30, maintain: 0.1, downgrade: 0.2, destroy: 0.7 }
   ],
   materialStartLvl: 19, materialOffset: 18,
   resourceNames: ['철', '강철', '신비석', '수정', '화염석', '전설석'],
@@ -49,9 +49,9 @@ const BALANCE_DEFAULTS = {
   applicantMaxPerSword: 10,       // max applicants per sword level
   applicantMaxTotal: 100,         // global hard cap
   successRates: [
-    100, 95, 90, 85, 78, 70, 60, 50, 42, 35,
-    28, 23, 19, 15, 12, 10,  8,  6, 4.5, 3.5,
-    2.7, 2.0, 1.5, 1.1, 0.8, 0.6, 0.4, 0.25, 0.15, 0.08
+    99, 98, 97, 96, 95, 94, 93, 92, 91, 90,
+    88, 86, 84, 82, 80, 75, 70, 65, 60, 55,
+    50, 40, 30, 20, 10,  8,  6,  4,  2,  1
   ],
   swordNames: [
     '평범한 철검', '단련된 철검', '예리한 철검', '빛나는 철검', '정교한 철검',
@@ -61,7 +61,7 @@ const BALANCE_DEFAULTS = {
     '화염검', '용염의 검', '작열의 검', '불멸의 화염검', '멸세의 화염검',
     '전설의 검', '천상의 검', '신성의 검', '창조의 검', '영원의 검', '천공의 패검'
   ],
-  tierNames: ['Iron', 'Steel', 'Mystic', 'Crystal', 'Inferno', 'Legendary'],
+  tierNames: ['일반', '희귀', '마법', '영웅', '고유', '전설'],
   tierColors: ['#cdd5e0', '#9bd4ff', '#4d6dff', '#c060ff', '#ff5060', '#ffd700'],
   tierLore: [
     '마을 대장간에서 단조한 평범한 검. 견습공이 처음 휘둘러보는 무기.',
