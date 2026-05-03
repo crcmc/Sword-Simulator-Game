@@ -90,6 +90,31 @@
     margin-left: 4px;
   }
 
+  /* Hamburger toggle (mobile only) */
+  .nav-hamburger {
+    display: none; /* hidden on desktop */
+    background: transparent;
+    border: 2px solid var(--panel-border);
+    cursor: pointer;
+    padding: 5px 7px;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 28px;
+    font-family: inherit;
+  }
+  .nav-hamburger span {
+    display: block;
+    width: 16px;
+    height: 2px;
+    background: var(--text-dim);
+    transition: background 0.1s;
+  }
+  .nav-hamburger:hover { border-color: var(--accent); }
+  .nav-hamburger:hover span { background: var(--accent); }
+
   .game-wrap {
     position: relative;
     z-index: 2;
@@ -102,32 +127,8 @@
     align-items: start;
   }
 
-  @media (max-width: 1100px) {
-    /* (A) Reorder so the enhancement stage shows first on mobile */
-    .game-wrap {
-      display: flex;
-      flex-direction: column;
-      grid-template-columns: 1fr; /* harmless fallback if grid is forced */
-    }
-    .center-panel { order: 1; }   /* 강화 화면 최상단 */
-    .right-col    { order: 2; }   /* 보관함·기록 */
-    .left-col     { order: 3; }   /* 정보·상점·소환 */
-
-    /* (B) Shrink the sword stage on mobile so the 강화 button fits in view */
-    .sword-stage  { aspect-ratio: 1 / 1; max-width: 380px; }
-
-    /* Nav bar: drop forge info to its own line so menu links stay clean */
-    .nav-bar { flex-wrap: wrap; gap: 6px 10px; padding: 8px 14px; }
-    .nav-spacer { display: none; }
-    .nav-info {
-      flex-basis: 100%;
-      font-size: 10px;
-      gap: 10px;
-      justify-content: flex-start;
-      padding-top: 4px;
-      border-top: 1px dashed rgba(155,143,191,0.2);
-    }
-  }
+  /* Mobile responsive overrides moved to bottom of stylesheet so they
+     win the cascade against later width:460px rules — see end of file. */
 
   .panel {
     background: linear-gradient(180deg, var(--panel) 0%, #0a0716 100%);
@@ -1787,11 +1788,66 @@
   .resource-stat[data-tier="5"] .l { color: #ffd700; }
   .resource-stat .v { color: var(--text); }
 
+  /* ============================================================
+     MOBILE RESPONSIVE OVERRIDES (placed last to win the cascade
+     against earlier width:460px rules sprinkled across the file)
+     ============================================================ */
+  @media (max-width: 1100px) {
+    /* (A) Reorder so the enhancement stage shows first on mobile.
+       align-items: start (desktop) prevents flex children from stretching,
+       so each column takes its content width. Force full width here. */
+    .game-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      grid-template-columns: 1fr;
+    }
+    .center-panel,
+    .left-col,
+    .right-col { width: 100%; min-width: 0; }
+    .center-panel { order: 1; align-items: stretch; }
+    .right-col    { order: 2; }
+    .left-col     { order: 3; }
+
+    /* (B) Drop the 460px caps on every center-panel child. */
+    .sword-stage,
+    .top-bar,
+    .resources-bar,
+    .prob-section,
+    .actions,
+    .footer-bar { max-width: none; }
+    .sword-stage { aspect-ratio: 1 / 1; }
+
+    /* Nav bar: hamburger collapses non-active items by default. */
+    .nav-bar { flex-wrap: wrap; gap: 6px 10px; padding: 8px 14px; }
+    .nav-spacer { display: none; }
+    .nav-hamburger { display: flex; }
+    .nav-bar > .nav-link:not(.active) { display: none; }
+    .nav-bar > .nav-info { display: none; }
+    .nav-bar.expanded > .nav-link:not(.active) {
+      display: inline-flex;
+      flex-basis: 100%;
+      justify-content: flex-start;
+    }
+    .nav-bar.expanded > .nav-info {
+      display: flex;
+      flex-basis: 100%;
+      font-size: 10px;
+      gap: 10px;
+      justify-content: flex-start;
+      padding-top: 4px;
+      border-top: 1px dashed rgba(155,143,191,0.2);
+    }
+  }
+
 </style>
 </head>
 <body>
 
-<header class="nav-bar">
+<header class="nav-bar" id="nav-bar">
+  <button class="nav-hamburger" id="nav-hamburger" aria-label="전체 메뉴" type="button">
+    <span></span><span></span><span></span>
+  </button>
   <a href="sword-enhancement.html" class="nav-link active">🔥 대장간</a>
   <a href="sword-rental.html" class="nav-link">⚔ 검 대여소</a>
   <a href="sword-dungeon.html" class="nav-link">🏰 던전</a>
@@ -5141,6 +5197,13 @@ $('forge-rename-btn').addEventListener('click', () => {
   showForgeRename();
   playSound('click');
 });
+
+// Hamburger menu toggle (mobile)
+const navHamburgerEl = document.getElementById('nav-hamburger');
+const navBarEl = document.getElementById('nav-bar');
+if (navHamburgerEl && navBarEl) {
+  navHamburgerEl.addEventListener('click', () => navBarEl.classList.toggle('expanded'));
+}
 
 // ============================================================
 //  BOOT

@@ -19,7 +19,8 @@ Sword Simulator Game/
 ├── sword-dungeon.html      # 던전 (실시간 출정 진행)
 ├── sword-gallery.html      # 갤러리 (수집한 검 모음)
 ├── shared.css              # 공통 스타일 (픽셀 + 다크 + 골드 액센트)
-├── shared.js               # 공통 데이터 레이어 (BALANCE/state/forge/tier helpers)
+├── balance-defaults.js     # 단일 진실 소스 — BALANCE_KEY/deepClone/BALANCE_DEFAULTS
+├── shared.js               # 공통 데이터 레이어 (state/forge/tier/balance runtime)
 └── CNAME                   # `www.lunchspace.store`
 ```
 
@@ -67,7 +68,8 @@ Sword Simulator Game/
 
 ## 코딩 컨벤션 / 주의사항
 
-- **shared.js와 inline JS의 충돌**: sword-enhancement.html은 forge 관련 로직을 inline에 그대로 둠 (refactor 보류). 신규 코드 추가 시 어디에 둘지 먼저 점검.
+- **밸런스 단일 소스**: BALANCE_DEFAULTS / BALANCE_KEY / deepClone은 `balance-defaults.js`에서만 정의됨. 모든 페이지가 이 파일을 가장 먼저 로드. 밸런스 값을 바꿀 때는 이 파일만 수정.
+- **shared.js vs inline JS**: sword-enhancement.html은 forge/state/render 로직을 여전히 inline에 가지고 있고 shared.js를 로드하지 않음. sword-rental.html · sword-dungeon.html은 shared.js를 사용. 신규 공통 함수 추가 시 어디에 둘지 점검.
 - **animations**: 강화 결과 애니메이션은 `clearAnims()`로 정리해야 함 (저장/판매/파괴 시).
 - **+0 검**: 보관함에서 숨기고 판매 불가 (무한 루프 방지).
 - **regex 주의**: validateForgeName은 `\0` 대신 `charCodeAt` 필터 사용.

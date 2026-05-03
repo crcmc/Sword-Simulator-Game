@@ -931,3 +931,11 @@ function buildBossSVG(tier, options) {
     <rect x="6" y="3" width="4" height="1" fill="${p.accent}" opacity="0.6"/>
   </svg>`;
 }
+
+// =============== NAV HAMBURGER (mobile menu toggle) ===============
+(function setupNavHamburger() {
+  const btn = document.getElementById('nav-hamburger');
+  const bar = document.getElementById('nav-bar');
+  if (!btn || !bar) return;
+  btn.addEventListener('click', () => bar.classList.toggle('expanded'));
+})();
