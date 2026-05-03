@@ -1816,7 +1816,15 @@
     .prob-section,
     .actions,
     .footer-bar { max-width: none; }
-    .sword-stage { aspect-ratio: 1 / 1; }
+    /* (C) Scale + rotate the sword artwork on mobile. Container animations
+       still run on .sword-container itself; we transform the inner SVG so
+       parent keyframes (shake/pulse/etc.) layer naturally on top. Stage
+       height matches the 0.7 scale (10:7) to remove vertical empty space. */
+    .sword-stage { aspect-ratio: 10 / 7; }
+    .sword-container > * {
+      transform: scale(0.7) rotate(90deg);
+      transform-origin: center center;
+    }
 
     /* Nav bar: hamburger collapses non-active items by default. */
     .nav-bar { flex-wrap: wrap; gap: 6px 10px; padding: 8px 14px; }
@@ -1951,7 +1959,6 @@
       <button class="btn primary" id="enhance-btn">강화하기</button>
       <button class="btn sell" id="sell-btn">검 판매</button>
       <button class="btn store" id="store-btn">검 보관</button>
-      <button class="btn danger full" id="reset-btn">처음부터</button>
     </div>
 
     <div class="footer-bar">
@@ -2068,6 +2075,11 @@
         <div class="admin-row"><label>검 조각 보너스</label><input type="number" id="ad-fragmentBonus" step="1" min="0"><span class="unit">%</span></div>
         <div class="admin-row"><label>강화석 1개당 보너스</label><input type="number" id="ad-stoneBonusEach" step="1" min="0"><span class="unit">%</span></div>
         <div class="admin-row"><label>강화석 최대 동시 사용</label><input type="number" id="ad-stoneMaxStack" step="1" min="1" max="20"><span class="unit">개</span></div>
+      </div>
+      <div class="admin-section">
+        <h3>보호석 사용량 (각 단계별)</h3>
+        <div class="desc">+0→+1 부터 +29→+30 까지 시도 시 보호석 소모 개수. 0 이면 무료 (저레벨 기본 0).</div>
+        <div class="admin-rates-grid" id="ad-protect-cost-grid"></div>
       </div>
       <div class="admin-section">
         <h3>실패 보상</h3>
@@ -2421,6 +2433,16 @@ function loadBalance() {
     console.warn('Balance load failed', e);
     return deepClone(BALANCE_DEFAULTS);
   }
+}
+
+// Returns the protect-stone cost for an enhancement attempt at `level`.
+// Falls back to 0 / 1 / 1 if balance.protectStoneCost is missing.
+function getProtectStoneCost(level) {
+  const arr = balance.protectStoneCost;
+  if (Array.isArray(arr) && arr[level] != null) return Math.max(0, arr[level] | 0);
+  if (level < 10) return 0;
+  if (level < 20) return 1;
+  return 1;
 }
 
 function saveBalance() {
@@ -3299,7 +3321,6 @@ const sellText = $('sell-text');
 const enhanceBtn = $('enhance-btn');
 const sellBtn = $('sell-btn');
 const storeBtn = $('store-btn');
-const resetBtn = $('reset-btn');
 const logEl = $('log');
 const toast = $('toast');
 const itemListEl = $('item-list');
@@ -3424,7 +3445,6 @@ function render() {
     storeBtn.innerHTML = `검 보관<span class="sub-text">+${state.collection[state.level]} → +${state.collection[state.level]+1}</span>`;
     storeBtn.disabled = busy;
   }
-  resetBtn.disabled = busy;
 
   // Shop buttons
   $('buy-stone-btn').innerHTML = `<span>강화석 1개 구매</span><span class="price">${SHOP_PRICE_STONE.toLocaleString()} G</span>`;
@@ -3491,17 +3511,28 @@ function renderItems() {
     {
       key: 'protect',
       name: '보호석',
-      desc: '실패 시 파괴/하락 방지',
+      desc: (() => {
+        const c = getProtectStoneCost(state.level);
+        return c === 0
+          ? '실패 시 파괴/하락 방지 (현재 단계 무료)'
+          : `실패 시 파괴/하락 방지 (현재 단계 ${c}개 소모)`;
+      })(),
       icon: buildProtectSVG(),
       count: state.protections,
       active: state.useProtection,
+      cost: getProtectStoneCost(state.level),
       onToggle: () => {
-        if (state.protections === 0) return;
+        const c = getProtectStoneCost(state.level);
+        if (state.protections < c) return;
         state.useProtection = !state.useProtection;
         playSound('click');
         saveState(); render();
       },
-      btnText: () => state.useProtection ? '사용 중 (취소)' : '사용'
+      btnText: () => {
+        const c = getProtectStoneCost(state.level);
+        if (state.useProtection) return '사용 중 (취소)';
+        return c === 0 ? '사용 (무료)' : `사용 (${c}개)`;
+      }
     }
   ];
   itemListEl.innerHTML = '';
@@ -3513,7 +3544,7 @@ function renderItems() {
       <div class="item-info">
         <div class="name">${it.name} <span class="item-count">x${it.count}</span></div>
         <div class="desc">${it.desc}</div>
-        <button class="btn item-use-btn" ${it.count === 0 || busy ? 'disabled' : ''}>
+        <button class="btn item-use-btn" ${(it.cost != null ? it.count < it.cost : it.count === 0) || busy ? 'disabled' : ''}>
           ${it.btnText()}
         </button>
       </div>
@@ -4087,7 +4118,7 @@ async function attemptEnhance() {
   const bonus = computeBonus();
   const finalRate = Math.min(100, baseRate + bonus);
 
-  let usedFrag = 0, usedStones = 0, usedProtect = false;
+  let usedFrag = 0, usedStones = 0, usedProtect = false, usedProtectCount = 0;
   if (state.useFragment && state.fragments > 0) {
     if (!cheats.infiniteItems) {
       state.fragments -= 1;
@@ -4102,12 +4133,16 @@ async function attemptEnhance() {
       state.useStones = 0;
     }
   }
-  if (state.useProtection && state.protections > 0) {
-    if (!cheats.infiniteItems) {
-      state.protections -= 1;
-      state.useProtection = false;
+  if (state.useProtection) {
+    const protectCost = getProtectStoneCost(state.level);
+    if (state.protections >= protectCost) {
+      if (!cheats.infiniteItems) {
+        state.protections -= protectCost;
+        state.useProtection = false;
+      }
+      usedProtect = true;
+      usedProtectCount = protectCost;
     }
-    usedProtect = true;
   }
 
   saveState();
@@ -4141,7 +4176,7 @@ async function attemptEnhance() {
     if (usedIron) used.push(`철 ${usedIron}`);
     if (usedFrag) used.push('검조각 1');
     if (usedStones) used.push(`강화석 ${usedStones}`);
-    if (usedProtect) used.push('보호석 1');
+    if (usedProtect) used.push(`보호석 ${usedProtectCount}`);
     if (matReq) used.push(`+${matReq.level} 검 ${matReq.count}`);
     if (used.length) modText = ` [${used.join(', ')} 사용]`;
     logMsg(`✦ 성공! +${state.level-1} → +${state.level}${modText}`, 'success');
@@ -4342,22 +4377,6 @@ function showModal(title, text, onConfirm) {
   };
 }
 
-function resetGame() {
-  showModal(
-    '게임 초기화',
-    '모든 강화 상태, 통계, 보관함이 초기화됩니다. 계속할까요?',
-    () => {
-      const soundOn = state.soundOn;
-      state = defaultState();
-      state.soundOn = soundOn;
-      logMsg('★ 새 게임을 시작합니다.', 'info');
-      saveState();
-      render();
-      showToast('초기화 완료', 'info');
-    }
-  );
-}
-
 // ============================================================
 //  ADMIN BALANCE PANEL
 // ============================================================
@@ -4405,6 +4424,19 @@ function populateAdminForm() {
     cell.className = 'admin-rates-cell';
     cell.innerHTML = `<div class="label">+${i}→+${i+1}</div><input type="number" id="ad-rate-${i}" step="0.01" min="0" max="100" value="${balance.successRates[i]}">`;
     ratesGrid.appendChild(cell);
+  }
+
+  // Protect stone cost grid (per-level)
+  const protectGrid = $('ad-protect-cost-grid');
+  if (protectGrid) {
+    protectGrid.innerHTML = '';
+    const protectArr = balance.protectStoneCost || [];
+    for (let i = 0; i < 30; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'admin-rates-cell';
+      cell.innerHTML = `<div class="label">+${i}→+${i+1}</div><input type="number" id="ad-protectCost-${i}" step="1" min="0" value="${protectArr[i] != null ? protectArr[i] : 0}">`;
+      protectGrid.appendChild(cell);
+    }
   }
 
   // Failure rules
@@ -4504,6 +4536,7 @@ function readAdminForm() {
     materialStartLvl: intv('ad-materialStartLvl'),
     materialOffset: intv('ad-materialOffset'),
     successRates: [],
+    protectStoneCost: [],
     failureRules: [],
     swordNames: [],
     tierNames: [],
@@ -4512,6 +4545,10 @@ function readAdminForm() {
     resourceNames: []
   };
   for (let i = 0; i < 30; i++) newBalance.successRates.push(num(`ad-rate-${i}`));
+  for (let i = 0; i < 30; i++) {
+    const el = $(`ad-protectCost-${i}`);
+    newBalance.protectStoneCost.push(el ? Math.max(0, intv(`ad-protectCost-${i}`)) : 0);
+  }
   for (let i = 0; i < balance.failureRules.length; i++) {
     newBalance.failureRules.push({
       maxLevel: intv(`ad-fr-${i}-maxLevel`),
@@ -4908,7 +4945,6 @@ function debugWipeAll() {
 enhanceBtn.addEventListener('click', attemptEnhance);
 sellBtn.addEventListener('click', sellSword);
 storeBtn.addEventListener('click', storeSword);
-resetBtn.addEventListener('click', resetGame);
 $('buy-stone-btn').addEventListener('click', buyStone);
 $('buy-protect1-btn').addEventListener('click', () => buyProtect(1));
 $('buy-protect10-btn').addEventListener('click', () => buyProtect(10));
@@ -4970,8 +5006,11 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
   });
 });
 
-// Show admin + debug buttons when URL has ?admin=1
-if (new URLSearchParams(location.search).has('admin')) {
+// Admin gate — URL must be ?admin=<sha256 of secret>.
+// Current secret: "engineer" → hash below. To rotate, just replace this constant
+// with sha256(newSecret). The plaintext secret never appears in the codebase.
+const ADMIN_HASH = '7826b958b79c70626801b880405eb5111557dadceb2fee2b1ed69a18eed0c6dc';
+if (new URLSearchParams(location.search).get('admin') === ADMIN_HASH) {
   $('admin-toggle').classList.add('show');
   $('debug-toggle').classList.add('show');
 }
