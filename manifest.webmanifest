@@ -1,0 +1,14 @@
+{
+  "name": "Sword Simulator Game",
+  "short_name": "SSG",
+  "description": "검 강화 시뮬레이터 — Sword Simulator Game",
+  "start_url": "index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0a0716",
+  "background_color": "#1a0f30",
+  "icons": [
+    { "src": "favicon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "favicon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
