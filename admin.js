@@ -176,37 +176,42 @@ function readForm() {
   const intv = id => parseInt($(id).value, 10) || 0;
   const txt = id => $(id).value || '';
 
-  const next = {
-    startGold: intv('ad-startGold'),
-    costBase: num('ad-costBase'),
-    costExp: num('ad-costExp'),
-    costMult: num('ad-costMult'),
-    sellAnchor: num('ad-sellAnchor'),
-    sellAnchorLvl: intv('ad-sellAnchorLvl'),
-    sellRatio: num('ad-sellRatio'),
-    shopStone: intv('ad-shopStone'),
-    shopProtect1: intv('ad-shopProtect1'),
-    shopProtect10: intv('ad-shopProtect10'),
-    fragmentBonus: num('ad-fragmentBonus'),
-    stoneBonusEach: num('ad-stoneBonusEach'),
-    stoneMaxStack: intv('ad-stoneMaxStack'),
-    destroyRefundRate: num('ad-destroyRefundRate'),
-    fragmentDropMin: intv('ad-fragmentDropMin'),
-    fragmentDropMax: intv('ad-fragmentDropMax'),
-    startingIron: intv('ad-startingIron'),
-    startIronCost: intv('ad-startIronCost'),
-    summonBaseCost: Math.max(1, intv('ad-summonBaseCost')),
-    materialStartLvl: intv('ad-materialStartLvl'),
-    materialOffset: intv('ad-materialOffset'),
-    successRates: [],
-    protectStoneCost: [],
-    failureRules: [],
-    swordNames: [],
-    tierNames: [],
-    tierColors: [],
-    tierLore: [],
-    resourceNames: []
-  };
+  // Start from a deep clone of the current balance so any field WITHOUT a form
+  // input (e.g. dungeons[], tierMismatch*, applicant*) is preserved instead of
+  // being silently dropped on save.
+  const next = deepClone(balance);
+
+  // Override editable fields from form inputs:
+  next.startGold = intv('ad-startGold');
+  next.costBase = num('ad-costBase');
+  next.costExp = num('ad-costExp');
+  next.costMult = num('ad-costMult');
+  next.sellAnchor = num('ad-sellAnchor');
+  next.sellAnchorLvl = intv('ad-sellAnchorLvl');
+  next.sellRatio = num('ad-sellRatio');
+  next.shopStone = intv('ad-shopStone');
+  next.shopProtect1 = intv('ad-shopProtect1');
+  next.shopProtect10 = intv('ad-shopProtect10');
+  next.fragmentBonus = num('ad-fragmentBonus');
+  next.stoneBonusEach = num('ad-stoneBonusEach');
+  next.stoneMaxStack = intv('ad-stoneMaxStack');
+  next.destroyRefundRate = num('ad-destroyRefundRate');
+  next.fragmentDropMin = intv('ad-fragmentDropMin');
+  next.fragmentDropMax = intv('ad-fragmentDropMax');
+  next.startingIron = intv('ad-startingIron');
+  next.startIronCost = intv('ad-startIronCost');
+  next.summonBaseCost = Math.max(1, intv('ad-summonBaseCost'));
+  next.materialStartLvl = intv('ad-materialStartLvl');
+  next.materialOffset = intv('ad-materialOffset');
+  // Reset arrays that ARE editable in the form, then refill from inputs:
+  next.successRates = [];
+  next.protectStoneCost = [];
+  next.failureRules = [];
+  next.swordNames = [];
+  next.tierNames = [];
+  next.tierColors = [];
+  next.tierLore = [];
+  next.resourceNames = [];
 
   for (let i = 0; i < 30; i++) next.successRates.push(num(`ad-rate-${i}`));
   for (let i = 0; i < 30; i++) {

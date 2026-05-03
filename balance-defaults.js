@@ -120,6 +120,21 @@ const BALANCE_DEFAULTS = {
       "destroy": 0.7
     }
   ],
+  "dungeons": [
+    { "name": "철광산",     "durationMs":       20000, "successRate": 100, "baseRewardGold":      50, "baseRewardResource":  1 },
+    { "name": "강철 채굴장", "durationMs":       60000, "successRate":  90, "baseRewardGold":     200, "baseRewardResource":  1 },
+    { "name": "신비의 동굴", "durationMs":      120000, "successRate":  80, "baseRewardGold":     800, "baseRewardResource":  1 },
+    { "name": "수정 광산",   "durationMs":     1800000, "successRate":  70, "baseRewardGold":    5000, "baseRewardResource":  2 },
+    { "name": "화염 던전",   "durationMs":    14400000, "successRate":  60, "baseRewardGold":   50000, "baseRewardResource":  2 },
+    { "name": "전설 심연",   "durationMs":  4320000000, "successRate":  50, "baseRewardGold": 5000000, "baseRewardResource":  5 }
+  ],
+  "tierMismatchPenalty": 15,
+  "tierMismatchBonus": 5,
+  "tierMismatchTimeBonus": 10,
+  "tierMismatchTimePenalty": 10,
+  "applicantBaseIntervalMs": 30000,
+  "applicantMaxPerSword": 10,
+  "applicantMaxTotal": 100,
   "swordNames": [
     "평범한 철검",
     "단련된 철검",
