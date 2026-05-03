@@ -5,6 +5,18 @@
    BALANCE_KEY, deepClone, BALANCE_DEFAULTS).
    ============================================================ */
 
+// Guard: balance-defaults.js must have loaded before us.
+if (typeof BALANCE_DEFAULTS === 'undefined' || typeof BALANCE_KEY === 'undefined') {
+  if (typeof document !== 'undefined' && document.body) {
+    document.body.innerHTML =
+      '<div style="padding:60px 20px;text-align:center;color:#fff;font-family:sans-serif;">' +
+      '<h1 style="color:#ec4899;font-size:18px;">⚠️ 게임 설정 로드 실패</h1>' +
+      '<p style="color:#aaa;font-size:13px;margin-top:14px;">balance-defaults.js를 불러오지 못했습니다.<br>네트워크를 확인하고 새로고침해주세요.</p>' +
+      '</div>';
+  }
+  throw new Error('balance-defaults.js failed to load (shared.js)');
+}
+
 // =============== CONSTANTS ===============
 const MAX_LEVEL = 30;
 const SAVE_KEY_PREFIX = 'sword_enhancement_save_v4__';
@@ -148,8 +160,12 @@ function loadState() {
     return Object.assign({}, def, parsed, {
       stats: Object.assign({}, def.stats, parsed.stats || {}),
       resources: Object.assign({}, def.resources, parsed.resources || {}),
-      collection: Array.isArray(parsed.collection) && parsed.collection.length === 31 ? parsed.collection : def.collection,
-      unlocked: Array.isArray(parsed.unlocked) && parsed.unlocked.length === 31 ? parsed.unlocked : def.unlocked,
+      collection: (Array.isArray(parsed.collection) && parsed.collection.length === 31
+                   && parsed.collection.every(c => typeof c === 'number' && Number.isFinite(c) && c >= 0))
+        ? parsed.collection : def.collection,
+      unlocked: (Array.isArray(parsed.unlocked) && parsed.unlocked.length === 31
+                 && parsed.unlocked.every(v => typeof v === 'boolean'))
+        ? parsed.unlocked : def.unlocked,
       rentals: Array.isArray(parsed.rentals) ? parsed.rentals : def.rentals,
       deadSwords: Array.isArray(parsed.deadSwords) ? parsed.deadSwords : def.deadSwords,
       applicants: Array.isArray(parsed.applicants) ? parsed.applicants : def.applicants,
@@ -158,13 +174,23 @@ function loadState() {
     });
   } catch (e) { return defaultState(); }
 }
+// Track save errors to avoid toast spam (one notification per minute max).
+let _lastSaveErrorAt = 0;
 function saveState() {
   try {
     if (SAVE_KEY) {
       state.lastPlayedAt = Date.now();
       localStorage.setItem(SAVE_KEY, JSON.stringify(state));
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('saveState failed:', e);
+    // Most likely cause: QuotaExceededError. Notify the user once per minute.
+    const now = Date.now();
+    if (now - _lastSaveErrorAt > 60000 && typeof showToast === 'function') {
+      _lastSaveErrorAt = now;
+      try { showToast('저장 실패 — 브라우저 저장 공간 부족', 'fail'); } catch (_) {}
+    }
+  }
 }
 
 // =============== MULTI-FORGE MANAGEMENT ===============

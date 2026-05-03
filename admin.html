@@ -372,6 +372,7 @@
     <button class="admin-tab" data-tab="rates">확률</button>
     <button class="admin-tab" data-tab="items">아이템</button>
     <button class="admin-tab" data-tab="content">콘텐츠</button>
+    <button class="admin-tab" data-tab="advanced">고급</button>
   </div>
 
   <!-- TAB: ECONOMY -->
@@ -473,6 +474,29 @@
     <div class="admin-section">
       <h3>검 이름 (31개, +0 ~ +30)</h3>
       <div class="admin-names-grid" id="ad-names"></div>
+    </div>
+  </div>
+
+  <!-- TAB: ADVANCED -->
+  <div class="admin-tabpanel" id="admin-tab-advanced">
+    <div class="admin-section">
+      <h3>던전 (6개 티어)</h3>
+      <div class="desc">각 티어 던전의 이름·기본 성공률·소요 시간·보상.</div>
+      <div id="ad-dungeons"></div>
+    </div>
+    <div class="admin-section">
+      <h3>티어 격차 페널티/보너스</h3>
+      <div class="desc">검·용사 티어와 던전 티어 차이로 보정. gap = swordTier − dungeonTier.</div>
+      <div class="admin-row"><label>검 ↓티어 페널티</label><input type="number" id="ad-tierMismatchPenalty" step="1" min="0"><span class="unit">% / tier</span></div>
+      <div class="admin-row"><label>검 ↑티어 보너스</label><input type="number" id="ad-tierMismatchBonus" step="1" min="0"><span class="unit">% / tier</span></div>
+      <div class="admin-row"><label>↑티어 시간 단축</label><input type="number" id="ad-tierMismatchTimeBonus" step="1" min="0"><span class="unit">% / tier (cap 50%)</span></div>
+      <div class="admin-row"><label>↓티어 시간 연장</label><input type="number" id="ad-tierMismatchTimePenalty" step="1" min="0"><span class="unit">% / tier (cap 100%)</span></div>
+    </div>
+    <div class="admin-section">
+      <h3>대여 신청자 생성 규칙</h3>
+      <div class="admin-row"><label>기본 생성 주기 (T0 검)</label><input type="number" id="ad-applicantBaseIntervalMs" step="1000" min="1000"><span class="unit">ms</span></div>
+      <div class="admin-row"><label>검 1자루당 최대 신청자</label><input type="number" id="ad-applicantMaxPerSword" step="1" min="1" max="100"><span class="unit">명</span></div>
+      <div class="admin-row"><label>전체 최대 신청자</label><input type="number" id="ad-applicantMaxTotal" step="10" min="10" max="1000"><span class="unit">명</span></div>
     </div>
   </div>
 

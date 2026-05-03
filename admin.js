@@ -82,6 +82,35 @@ function populateForm() {
   $('ad-materialStartLvl').value = balance.materialStartLvl;
   $('ad-materialOffset').value = balance.materialOffset;
 
+  // Advanced — tier mismatch + applicant rules
+  $('ad-tierMismatchPenalty').value = balance.tierMismatchPenalty != null ? balance.tierMismatchPenalty : 15;
+  $('ad-tierMismatchBonus').value = balance.tierMismatchBonus != null ? balance.tierMismatchBonus : 5;
+  $('ad-tierMismatchTimeBonus').value = balance.tierMismatchTimeBonus != null ? balance.tierMismatchTimeBonus : 10;
+  $('ad-tierMismatchTimePenalty').value = balance.tierMismatchTimePenalty != null ? balance.tierMismatchTimePenalty : 10;
+  $('ad-applicantBaseIntervalMs').value = balance.applicantBaseIntervalMs != null ? balance.applicantBaseIntervalMs : 30000;
+  $('ad-applicantMaxPerSword').value = balance.applicantMaxPerSword != null ? balance.applicantMaxPerSword : 10;
+  $('ad-applicantMaxTotal').value = balance.applicantMaxTotal != null ? balance.applicantMaxTotal : 100;
+
+  // Advanced — dungeons (6 entries × 5 fields)
+  const dungeonsBox = $('ad-dungeons');
+  if (dungeonsBox) {
+    dungeonsBox.innerHTML = '';
+    const dungeons = balance.dungeons || [];
+    for (let i = 0; i < 6; i++) {
+      const d = dungeons[i] || { name: '', durationMs: 0, successRate: 0, baseRewardGold: 0, baseRewardResource: 0 };
+      const div = document.createElement('div');
+      div.className = 'admin-failure-rule';
+      div.innerHTML = `
+        <div class="row"><label>티어 ${i} 이름</label><input type="text" id="ad-dungeon-${i}-name" value="${(d.name||'').replace(/"/g,'&quot;')}"></div>
+        <div class="row"><label>소요 시간 (ms)</label><input type="number" id="ad-dungeon-${i}-durationMs" step="1000" min="0" value="${d.durationMs|0}"></div>
+        <div class="row"><label>기본 성공률 (%)</label><input type="number" id="ad-dungeon-${i}-successRate" step="1" min="0" max="100" value="${d.successRate|0}"></div>
+        <div class="row"><label>보상 골드</label><input type="number" id="ad-dungeon-${i}-baseRewardGold" step="1" min="0" value="${d.baseRewardGold|0}"></div>
+        <div class="row"><label>보상 자원</label><input type="number" id="ad-dungeon-${i}-baseRewardResource" step="1" min="0" value="${d.baseRewardResource|0}"></div>
+      `;
+      dungeonsBox.appendChild(div);
+    }
+  }
+
   // Success rates grid
   const ratesGrid = $('ad-rates-grid');
   ratesGrid.innerHTML = '';
@@ -203,6 +232,25 @@ function readForm() {
   next.summonBaseCost = Math.max(1, intv('ad-summonBaseCost'));
   next.materialStartLvl = intv('ad-materialStartLvl');
   next.materialOffset = intv('ad-materialOffset');
+  // Advanced tab — tier mismatch + applicant rules
+  next.tierMismatchPenalty = num('ad-tierMismatchPenalty');
+  next.tierMismatchBonus = num('ad-tierMismatchBonus');
+  next.tierMismatchTimeBonus = num('ad-tierMismatchTimeBonus');
+  next.tierMismatchTimePenalty = num('ad-tierMismatchTimePenalty');
+  next.applicantBaseIntervalMs = Math.max(1000, intv('ad-applicantBaseIntervalMs'));
+  next.applicantMaxPerSword = Math.max(1, intv('ad-applicantMaxPerSword'));
+  next.applicantMaxTotal = Math.max(10, intv('ad-applicantMaxTotal'));
+  // Advanced tab — dungeons (6 entries × 5 fields)
+  next.dungeons = [];
+  for (let i = 0; i < 6; i++) {
+    next.dungeons.push({
+      name: txt(`ad-dungeon-${i}-name`),
+      durationMs: Math.max(0, intv(`ad-dungeon-${i}-durationMs`)),
+      successRate: Math.max(0, Math.min(100, intv(`ad-dungeon-${i}-successRate`))),
+      baseRewardGold: Math.max(0, intv(`ad-dungeon-${i}-baseRewardGold`)),
+      baseRewardResource: Math.max(0, intv(`ad-dungeon-${i}-baseRewardResource`))
+    });
+  }
   // Reset arrays that ARE editable in the form, then refill from inputs:
   next.successRates = [];
   next.protectStoneCost = [];
