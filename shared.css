@@ -1,7 +1,8 @@
 /* ============================================================
    shared.css — Sword Enhancement common styles
    ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Galmuri11&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static-subset/pretendard.min.css');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -29,7 +30,7 @@ html, body {
     radial-gradient(ellipse at top, var(--bg-light) 0%, var(--bg-dark) 60%),
     var(--bg-dark);
   color: var(--text);
-  font-family: 'Galmuri11', 'Press Start 2P', monospace;
+  font-family: 'Pretendard', 'Press Start 2P', monospace;
   overflow-x: hidden;
   image-rendering: pixelated;
   -webkit-font-smoothing: none;
@@ -54,7 +55,9 @@ body::before {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 12px;
+  font-size: 13px;
+  /* Korean-friendly modern sans-serif for the navigation bar only */
+  font-family: 'Pretendard', sans-serif;
 }
 .nav-link {
   color: var(--text-dim);
@@ -209,22 +212,26 @@ body::before {
 /* ===== TOAST ===== */
 .toast {
   position: fixed;
-  top: 24px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%) translateY(-100px);
+  /* Hidden state slides up from slightly below center */
+  transform: translate(-50%, calc(-50% + 12px));
   background: var(--panel);
   border: 3px solid var(--accent);
   padding: 16px 32px;
   font-family: 'Press Start 2P', monospace;
   font-size: 16px;
   z-index: 100;
-  transition: transform 0.4s cubic-bezier(0.5, 1.6, 0.4, 1);
+  transition: opacity 0.2s, transform 0.4s cubic-bezier(0.5, 1.6, 0.4, 1);
   text-shadow: 2px 2px 0 #000;
   pointer-events: none;
   letter-spacing: 2px;
   text-align: center;
+  max-width: 90vw;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+  opacity: 0;
 }
-.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.show { transform: translate(-50%, -50%); opacity: 1; }
 .toast.success { color: var(--success); border-color: var(--success); }
 .toast.fail { color: var(--warn); border-color: var(--warn); }
 .toast.destroy { color: var(--fail); border-color: var(--fail); }
@@ -310,7 +317,7 @@ body::before {
   background: rgba(0,0,0,0.6);
   border: 2px solid var(--panel-border);
   color: var(--accent);
-  font-family: 'Galmuri11', monospace;
+  font-family: 'Pretendard', monospace;
   font-size: 16px;
   padding: 10px 14px;
   margin-bottom: 8px;
@@ -436,7 +443,7 @@ body::before {
 }
 .forge-display .forge-icon { font-size: 13px; }
 .forge-display .forge-name {
-  font-family: 'Galmuri11', monospace;
+  font-family: 'Pretendard', monospace;
   color: var(--accent);
   letter-spacing: 1px;
   font-size: 12px;
@@ -493,7 +500,7 @@ body::before {
   min-width: 0;
 }
 .forge-row .name {
-  font-family: 'Galmuri11', monospace;
+  font-family: 'Pretendard', monospace;
   color: var(--accent);
   font-size: 13px;
   letter-spacing: 1px;

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSG — Admin</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  body {
+    font-family: 'Pretendard', monospace;
+    background: var(--bg-dark);
+    color: var(--text);
+    min-height: 100vh;
+    margin: 0;
+  }
+
+  .auth-gate {
+    max-width: 480px;
+    margin: 80px auto;
+    padding: 32px;
+    background: var(--panel);
+    border: 3px solid #7f1d1d;
+    text-align: center;
+  }
+  .auth-gate h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 18px;
+    color: #ef4444;
+    margin: 0 0 14px;
+  }
+  .auth-gate p { font-size: 12px; color: var(--text-dim); margin: 6px 0; }
+  .auth-gate a { color: var(--accent); }
+
+  .admin-page {
+    max-width: 1100px;
+    margin: 24px auto;
+    padding: 0 16px 60px;
+  }
+  .admin-page > .title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 18px;
+    color: var(--accent);
+    text-shadow: 3px 3px 0 #000;
+    letter-spacing: 2px;
+    margin: 16px 0 6px;
+  }
+  .admin-page > .desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+  }
+
+  .admin-info-box {
+    background: rgba(255,215,0,0.06);
+    border: 2px solid var(--accent);
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .admin-info-box strong { color: var(--accent); }
+  .admin-info-box code {
+    background: rgba(0,0,0,0.4);
+    padding: 1px 6px;
+    color: var(--teal);
+    font-size: 11px;
+  }
+
+  .admin-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-bottom: 2px solid var(--panel-border);
+    margin-bottom: 18px;
+  }
+  .admin-tab {
+    background: transparent;
+    border: 2px solid transparent;
+    border-bottom: none;
+    color: var(--text-dim);
+    padding: 8px 16px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  .admin-tab:hover { color: var(--text); }
+  .admin-tab.active {
+    color: var(--accent);
+    border-color: var(--panel-border);
+    border-bottom: 2px solid var(--bg-dark);
+    background: var(--panel);
+    margin-bottom: -2px;
+  }
+  .admin-tabpanel { display: none; }
+  .admin-tabpanel.active { display: block; }
+
+  .admin-section {
+    background: rgba(0,0,0,0.3);
+    border: 2px solid var(--panel-border);
+    padding: 16px;
+    margin-bottom: 18px;
+  }
+  .admin-section h3 {
+    font-size: 13px;
+    color: var(--accent);
+    margin: 0 0 12px;
+    letter-spacing: 1px;
+    border-bottom: 1px dashed var(--panel-border);
+    padding-bottom: 8px;
+  }
+  .admin-section .desc {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+
+  .admin-row {
+    display: grid;
+    grid-template-columns: 200px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .admin-row label { font-size: 12px; color: var(--text); }
+  .admin-row input[type=number],
+  .admin-row input[type=text] {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 6px 10px;
+    font-family: inherit;
+    font-size: 12px;
+    width: 100%;
+  }
+  .admin-row .unit {
+    color: var(--text-dim);
+    font-size: 11px;
+    min-width: 24px;
+    text-align: left;
+  }
+
+  .admin-rates-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+  .admin-rates-cell {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--panel-border);
+    padding: 6px;
+  }
+  .admin-rates-cell .label {
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .admin-rates-cell input {
+    width: 100%;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 11px;
+  }
+
+  .admin-failure-rule {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--panel-border);
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+  .admin-failure-rule .row {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .admin-failure-rule .row label { font-size: 11px; color: var(--text-dim); }
+  .admin-failure-rule .row input {
+    width: 100%;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 11px;
+  }
+
+  .admin-tier-row, .admin-lore-row, .admin-name-row {
+    display: grid;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 6px;
+    background: rgba(0,0,0,0.2);
+    padding: 6px 8px;
+    border: 1px solid var(--panel-border);
+  }
+  .admin-tier-row { grid-template-columns: 60px 1fr 60px; }
+  .admin-lore-row { grid-template-columns: 1fr; }
+  .admin-name-row { grid-template-columns: 50px 1fr; }
+  .admin-tier-row input[type=text],
+  .admin-lore-row textarea,
+  .admin-name-row input[type=text] {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .admin-lore-row textarea { resize: vertical; min-height: 36px; }
+  .admin-tier-row .tier-idx,
+  .admin-name-row .lvl {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    text-align: center;
+  }
+  .admin-lore-row .lore-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .admin-names-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .admin-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-dark);
+    border-top: 2px solid var(--panel-border);
+    padding: 14px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 24px;
+  }
+  .admin-btn {
+    background: rgba(0,0,0,0.3);
+    border: 2px solid var(--panel-border);
+    color: var(--text);
+    padding: 8px 14px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 1px;
+    transition: all 0.1s;
+  }
+  .admin-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .admin-btn.primary {
+    background: linear-gradient(180deg, #ec4899 0%, #be185d 100%);
+    border-color: #ec4899;
+    color: #fff;
+  }
+  .admin-btn.primary:hover { background: linear-gradient(180deg, #f472b6 0%, #db2777 100%); color: #fff; }
+  .admin-btn.success {
+    background: linear-gradient(180deg, #15803d 0%, #14532d 100%);
+    border-color: #166534;
+    color: #fff;
+  }
+  .admin-btn.success:hover { background: linear-gradient(180deg, #16a34a 0%, #166534 100%); color: #fff; }
+  .admin-btn.danger { border-color: #7f1d1d; color: #fca5a5; }
+  .admin-btn.danger:hover { background: rgba(127, 29, 29, 0.2); border-color: #ef4444; color: #ef4444; }
+
+  /* Override shared.css's .toast (pixel font + top:24px) for the admin page,
+     which uses a centered toast in proportional Korean text. */
+  .toast {
+    position: fixed;
+    top: 50%;
+    bottom: auto;
+    left: 50%;
+    right: auto;
+    /* Hidden: slightly below center for a small slide-up reveal */
+    transform: translate(-50%, calc(-50% + 12px));
+    background: var(--panel);
+    border: 2px solid var(--accent);
+    padding: 12px 22px;
+    color: var(--accent);
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 0;
+    text-shadow: none;
+    text-align: center;
+    max-width: 90vw;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { transform: translate(-50%, -50%); opacity: 1; }
+  .toast.success { color: #4ade80; border-color: #4ade80; }
+  .toast.fail { color: #ef4444; border-color: #ef4444; }
+</style>
+</head>
+<body>
+
+<header class="nav-bar">
+  <a href="sword-enhancement.html" class="nav-link">← 게임으로</a>
+  <span class="nav-spacer"></span>
+  <span class="nav-info">⚙ ADMIN</span>
+</header>
+
+<div id="auth-gate" class="auth-gate" style="display:none;">
+  <h1>접근 거부</h1>
+  <p>이 페이지는 인증된 URL로만 접근 가능합니다.</p>
+  <p style="margin-top:18px;"><a href="sword-enhancement.html">게임으로 돌아가기 →</a></p>
+</div>
+
+<main id="admin-content" class="admin-page" style="display:none;">
+  <div class="title">⚙ Sword Simulator Game — Admin</div>
+  <div class="desc">밸런스 설정을 편집하고, 모든 사용자에게 패치를 배포합니다.</div>
+
+  <div class="admin-info-box">
+    <strong>적용 흐름</strong><br>
+    · <strong>로컬 적용</strong>: 이 브라우저의 <code>localStorage</code>에만 반영. 본인 계정에서만 변경된 값을 봅니다.<br>
+    · <strong>balance-defaults.js 다운로드</strong>: 새 기본값 파일을 다운로드 → repo의 <code>balance-defaults.js</code>에 덮어쓰기 → git commit + push → GitHub Pages 빌드 후 모든 사용자가 새 기본값을 봅니다.
+  </div>
+
+  <div class="admin-tabs">
+    <button class="admin-tab active" data-tab="economy">경제</button>
+    <button class="admin-tab" data-tab="rates">확률</button>
+    <button class="admin-tab" data-tab="items">아이템</button>
+    <button class="admin-tab" data-tab="content">콘텐츠</button>
+  </div>
+
+  <!-- TAB: ECONOMY -->
+  <div class="admin-tabpanel active" id="admin-tab-economy">
+    <div class="admin-section">
+      <h3>기본 경제</h3>
+      <div class="admin-row"><label>시작 골드</label><input type="number" id="ad-startGold" step="1000"><span class="unit">G</span></div>
+    </div>
+    <div class="admin-section">
+      <h3>강화 비용 공식</h3>
+      <div class="desc">cost(level) = round((level+1)<sup>지수</sup>) × 베이스 × 배율</div>
+      <div class="admin-row"><label>베이스</label><input type="number" id="ad-costBase" step="1"><span class="unit">G</span></div>
+      <div class="admin-row"><label>지수</label><input type="number" id="ad-costExp" step="0.05"><span class="unit"></span></div>
+      <div class="admin-row"><label>배율</label><input type="number" id="ad-costMult" step="0.5"><span class="unit">×</span></div>
+    </div>
+    <div class="admin-section">
+      <h3>판매 가격 공식</h3>
+      <div class="desc">sell(level) = anchor × ratio<sup>(level - anchorLvl)</sup> 후 2 유효숫자로 반올림</div>
+      <div class="admin-row"><label>기준 레벨</label><input type="number" id="ad-sellAnchorLvl" step="1" min="0" max="30"><span class="unit"></span></div>
+      <div class="admin-row"><label>기준 가격</label><input type="number" id="ad-sellAnchor" step="1000"><span class="unit">G</span></div>
+      <div class="admin-row"><label>레벨당 비율</label><input type="number" id="ad-sellRatio" step="0.05"><span class="unit">×</span></div>
+    </div>
+    <div class="admin-section">
+      <h3>상점 가격</h3>
+      <div class="admin-row"><label>강화석 1개</label><input type="number" id="ad-shopStone" step="1000"><span class="unit">G</span></div>
+      <div class="admin-row"><label>보호석 1개</label><input type="number" id="ad-shopProtect1" step="10000"><span class="unit">G</span></div>
+      <div class="admin-row"><label>보호석 10개</label><input type="number" id="ad-shopProtect10" step="100000"><span class="unit">G</span></div>
+    </div>
+  </div>
+
+  <!-- TAB: RATES -->
+  <div class="admin-tabpanel" id="admin-tab-rates">
+    <div class="admin-section">
+      <h3>강화 성공률 (각 단계 → 다음 단계)</h3>
+      <div class="desc">+0 → +1 부터 +29 → +30 까지 30개 값. 단위: %</div>
+      <div class="admin-rates-grid" id="ad-rates-grid"></div>
+    </div>
+    <div class="admin-section">
+      <h3>실패 결과 확률 (구간별)</h3>
+      <div class="desc">실패 시 결과: 유지 / 하락 / 파괴 (합 ≤ 1.0). 부족분은 자동 유지로 처리.</div>
+      <div id="ad-failure-rules"></div>
+    </div>
+    <div class="admin-section">
+      <h3>강화 재료 요구</h3>
+      <div class="desc">currentLevel ≥ 시작레벨 일 때, (currentLevel − 오프셋)개의 +currentLevel 검 필요</div>
+      <div class="admin-row"><label>적용 시작 레벨</label><input type="number" id="ad-materialStartLvl" step="1" min="0" max="30"><span class="unit">+</span></div>
+      <div class="admin-row"><label>오프셋</label><input type="number" id="ad-materialOffset" step="1" min="0"><span class="unit"></span></div>
+    </div>
+  </div>
+
+  <!-- TAB: ITEMS -->
+  <div class="admin-tabpanel" id="admin-tab-items">
+    <div class="admin-section">
+      <h3>아이템 효과</h3>
+      <div class="admin-row"><label>검 조각 보너스</label><input type="number" id="ad-fragmentBonus" step="1" min="0"><span class="unit">%</span></div>
+      <div class="admin-row"><label>강화석 1개당 보너스</label><input type="number" id="ad-stoneBonusEach" step="1" min="0"><span class="unit">%</span></div>
+      <div class="admin-row"><label>강화석 최대 동시 사용</label><input type="number" id="ad-stoneMaxStack" step="1" min="1" max="20"><span class="unit">개</span></div>
+    </div>
+    <div class="admin-section">
+      <h3>보호석 사용량 (각 단계별)</h3>
+      <div class="desc">+0→+1 부터 +29→+30 까지 시도 시 보호석 소모 개수. 0 이면 무료.</div>
+      <div class="admin-rates-grid" id="ad-protect-cost-grid"></div>
+    </div>
+    <div class="admin-section">
+      <h3>실패 보상</h3>
+      <div class="admin-row"><label>파괴 시 골드 환급률</label><input type="number" id="ad-destroyRefundRate" step="0.05" min="0" max="1"><span class="unit">×</span></div>
+      <div class="admin-row"><label>파괴 시 검조각 최소</label><input type="number" id="ad-fragmentDropMin" step="1" min="0"><span class="unit">개</span></div>
+      <div class="admin-row"><label>파괴 시 검조각 최대</label><input type="number" id="ad-fragmentDropMax" step="1" min="0"><span class="unit">개</span></div>
+    </div>
+    <div class="admin-section">
+      <h3>자원 (티어 0 — 철)</h3>
+      <div class="desc">+0 → +1 시도 시 철이 차감됩니다. 새 게임 시작 시 지급되는 철의 양도 조정 가능.</div>
+      <div class="admin-row"><label>시작 철 지급량</label><input type="number" id="ad-startingIron" step="10" min="0"><span class="unit">개</span></div>
+      <div class="admin-row"><label>+0 시도 당 철 비용</label><input type="number" id="ad-startIronCost" step="1" min="0"><span class="unit">개</span></div>
+    </div>
+    <div class="admin-section">
+      <h3>티어 소환 비용</h3>
+      <div class="desc">자원 cost = base × 2<sup>(level - tierMin)</sup>. base 1 일 때 티어 내 비용은 1, 2, 4, 8, 16. base 2 면 두 배.</div>
+      <div class="admin-row"><label>소환 base 비용</label><input type="number" id="ad-summonBaseCost" step="1" min="1"><span class="unit">×</span></div>
+    </div>
+  </div>
+
+  <!-- TAB: CONTENT -->
+  <div class="admin-tabpanel" id="admin-tab-content">
+    <div class="admin-section">
+      <h3>티어 정보 (6개 티어)</h3>
+      <div class="desc">티어 0: +0~+4, 티어 1: +5~+9, ... 티어 5: +25~+30</div>
+      <div id="ad-tiers"></div>
+    </div>
+    <div class="admin-section">
+      <h3>티어 lore (마우스 오버 툴팁)</h3>
+      <div id="ad-lores"></div>
+    </div>
+    <div class="admin-section">
+      <h3>티어 자원 이름 (6개)</h3>
+      <div class="desc">티어 별 자원 표시명. 던전 보상 / 자원 표시에 사용됩니다.</div>
+      <div id="ad-resnames"></div>
+    </div>
+    <div class="admin-section">
+      <h3>검 이름 (31개, +0 ~ +30)</h3>
+      <div class="admin-names-grid" id="ad-names"></div>
+    </div>
+  </div>
+
+  <div class="admin-actions">
+    <button class="admin-btn primary" id="ad-apply-local">로컬 적용 (이 브라우저)</button>
+    <button class="admin-btn success" id="ad-export-defaults">📥 balance-defaults.js 다운로드 (전체 패치)</button>
+    <button class="admin-btn" id="ad-export-json">JSON Export</button>
+    <button class="admin-btn" id="ad-import">JSON Import</button>
+    <button class="admin-btn danger" id="ad-reset">기본값 복원</button>
+  </div>
+</main>
+
+<input type="file" id="ad-import-file" accept=".json,application/json" style="display:none;">
+<div class="toast" id="toast"></div>
+
+<script src="balance-defaults.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

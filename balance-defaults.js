@@ -1,12 +1,17 @@
 /* ============================================================
    balance-defaults.js — single source of truth for game balance
-   Loaded by: sword-enhancement.html, sword-rental.html, sword-dungeon.html
-   Defines globals: BALANCE_KEY, deepClone, BALANCE_DEFAULTS
+   Loaded by: sword-enhancement.html, sword-rental.html, sword-dungeon.html, admin.html
+   Defines globals: BALANCE_KEY, deepClone, BALANCE_DEFAULTS, ADMIN_HASH
    ============================================================ */
 
 const BALANCE_KEY = 'sword_balance_overrides_v1';
 
 function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
+
+// SHA-256 hash of the admin secret. Rotate by replacing with the new sha256.
+// Current secret hash corresponds to the password documented in PROJECT.md
+// (kept out of source). Changing this here invalidates all prior bookmarks.
+const ADMIN_HASH = '7826b958b79c70626801b880405eb5111557dadceb2fee2b1ed69a18eed0c6dc';
 
 const BALANCE_DEFAULTS = {
   startGold: 1000000,
