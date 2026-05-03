@@ -114,7 +114,19 @@
     .left-col     { order: 3; }   /* 정보·상점·소환 */
 
     /* (B) Shrink the sword stage on mobile so the 강화 button fits in view */
-    .sword-stage  { aspect-ratio: 1 / 1; max-width: 320px; }
+    .sword-stage  { aspect-ratio: 1 / 1; max-width: 380px; }
+
+    /* Nav bar: drop forge info to its own line so menu links stay clean */
+    .nav-bar { flex-wrap: wrap; gap: 6px 10px; padding: 8px 14px; }
+    .nav-spacer { display: none; }
+    .nav-info {
+      flex-basis: 100%;
+      font-size: 10px;
+      gap: 10px;
+      justify-content: flex-start;
+      padding-top: 4px;
+      border-top: 1px dashed rgba(155,143,191,0.2);
+    }
   }
 
   .panel {
@@ -1476,37 +1488,28 @@
   }
 
   /* Forge name display below title */
-  .forge-display {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 10px;
-    font-size: 11px;
-    background: rgba(0,0,0,0.4);
-    border: 1px solid var(--panel-border);
-    padding: 5px 12px;
-  }
-  .forge-display .forge-icon { font-size: 13px; }
-  .forge-display .forge-name {
-    font-family: 'Galmuri11', monospace;
-    color: var(--accent);
-    letter-spacing: 1px;
-    font-size: 12px;
-  }
-  .forge-display .forge-rename-btn {
+  .forge-rename-btn {
     background: transparent;
     border: 1px solid rgba(155, 143, 191, 0.4);
     color: var(--text-dim);
     font-family: inherit;
-    font-size: 10px;
-    padding: 2px 7px;
+    font-size: 11px;
+    line-height: 1;
+    padding: 3px 7px;
     cursor: pointer;
-    margin-left: 4px;
   }
-  .forge-display .forge-rename-btn:hover {
+  .forge-rename-btn:hover {
     border-color: var(--accent);
     color: var(--accent);
   }
+  .nav-info #nav-forge {
+    color: var(--accent);
+    font-family: 'Galmuri11', monospace;
+    letter-spacing: 1px;
+  }
+  /* Tighten the gap between forge name and its action buttons */
+  .nav-info #nav-forge + .forge-rename-btn { margin-left: 4px; }
+  .nav-info .forge-rename-btn + .forge-rename-btn { margin-left: -8px; }
 
   /* Log */
   .log {
@@ -1683,29 +1686,6 @@
   .top-items-row .top-stat .v.stone { color: #c084fc; }
   .top-items-row .top-stat .v.protect { color: var(--teal); }
 
-  /* Page-wide title bar (above the 3-column game-wrap) */
-  .page-title {
-    text-align: center;
-    margin: 0 auto 14px;
-    padding: 24px 20px 0;
-    max-width: 1200px;
-  }
-  .page-title h1 {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 22px;
-    color: var(--accent);
-    text-shadow: 3px 3px 0 #000, -1px -1px 0 var(--accent-2), 0 0 20px rgba(255, 215, 0, 0.4);
-    letter-spacing: 2px;
-  }
-  .page-title .sub {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 6px;
-  }
-  .page-title .forge-display {
-    margin-top: 10px;
-  }
-
   /* Tier summon panel */
   .summon-list {
     display: flex;
@@ -1818,20 +1798,11 @@
   <span class="nav-spacer"></span>
   <span class="nav-info">
     🔥 <span id="nav-forge">—</span>
+    <button class="forge-rename-btn" id="forge-rename-btn" title="이름 변경">✏</button>
+    <button class="forge-rename-btn" id="forge-switch-btn" title="다른 대장간 선택">⇄</button>
     <span>활성 <span class="v" id="nav-active">0</span></span>
   </span>
 </header>
-
-<div class="page-title">
-  <h1>SWORD ENHANCE</h1>
-  <div class="sub">검을 +30 까지 강화해보세요</div>
-  <div class="forge-display" id="forge-display" style="display:none;">
-    <span class="forge-icon">🔥</span>
-    <span class="forge-name" id="forge-name-display">대장간</span>
-    <button class="forge-rename-btn" id="forge-rename-btn" title="이름 변경">✏ 변경</button>
-    <button class="forge-rename-btn" id="forge-switch-btn" title="다른 대장간 선택">⇄ 전환</button>
-  </div>
-</div>
 
 <div class="game-wrap">
 
@@ -3295,14 +3266,7 @@ function render() {
   levelBadge.style.color = tierColors[tier];
   levelBadge.style.borderColor = tierColors[tier];
 
-  // Forge name display
-  if (forge && forge.name) {
-    $('forge-display').style.display = '';
-    $('forge-name-display').textContent = forge.name;
-  } else {
-    $('forge-display').style.display = 'none';
-  }
-  // Nav info
+  // Forge name now shown in the top nav (#nav-forge); page-title block removed.
   const navForgeEl = $('nav-forge');
   if (navForgeEl) navForgeEl.textContent = forge ? forge.name : '—';
   const navActiveEl = $('nav-active');
