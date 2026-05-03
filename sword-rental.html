@@ -519,11 +519,17 @@ function render() {
   $('nav-gold').textContent = (state.gold || 0).toLocaleString();
   $('nav-active').textContent = (state.rentals || []).length;
 
+  // Resolve once and pass through to both consumers — guarantees that
+  // 선택된 용사 패널과 dungeon-target 메시지가 같은 applicant 인스턴스를
+  // 본다. (이전에는 각자 selectedApplicant()를 따로 호출해서 두 결과가
+  // 어긋날 여지가 있었음.)
+  const sel = selectedApplicant();
+
   renderCollection();
   renderPreviewSword();
   renderApplicants();
-  renderPreviewHero();
-  renderDungeonTarget();
+  renderPreviewHero(sel);
+  renderDungeonTarget(sel);
   renderActiveRentals();
   renderDeadSwords();
 
@@ -578,10 +584,10 @@ function renderPreviewSword() {
   `;
 }
 
-function renderPreviewHero() {
+function renderPreviewHero(a) {
+  if (a === undefined) a = selectedApplicant();
   const halfBox = $('preview-hero-half');
   const box = $('preview-hero');
-  const a = selectedApplicant();
   if (!a) {
     halfBox.classList.remove('has-hero');
     box.innerHTML = '<span class="preview-empty">대여 신청자에서 선택</span>';
@@ -596,41 +602,51 @@ function renderPreviewHero() {
   `;
 }
 
-function renderDungeonTarget() {
+function renderDungeonTarget(a) {
+  if (a === undefined) a = selectedApplicant();
   const box = $('dungeon-target');
   if (selectedSwordLevel < 1) {
     box.classList.add('empty');
     box.innerHTML = '검을 먼저 선택하세요';
     return;
   }
-  const a = selectedApplicant();
   if (!a) {
     box.classList.add('empty');
     box.innerHTML = '대여 신청자 목록에서 용사를 선택하세요';
     return;
   }
-  box.classList.remove('empty');
-  const tier = a.desiredDungeonTier;
-  const cfg = balance.dungeons[tier];
-  const dur = adjustedDuration(selectedSwordLevel, tier, a.tier);
-  const rate = adjustedSuccessRate(selectedSwordLevel, tier, a.tier);
-  const reward = dungeonRewards(tier, 1);
-  const heroCut = Math.floor(reward.gold * a.payRate / 100);
-  const playerGold = reward.gold - heroCut;
-  const swordGap = getTier(selectedSwordLevel) - tier;
-  const heroGap = a.tier - tier;
-  let gapNotes = [];
-  if (swordGap !== 0) gapNotes.push(`검 ${swordGap > 0 ? '+' : ''}${swordGap}티어`);
-  if (heroGap !== 0) gapNotes.push(`용사 ${heroGap > 0 ? '+' : ''}${heroGap}티어`);
-  const gapTxt = gapNotes.length ? `(${gapNotes.join(', ')})` : '';
-  const rateColor = rate >= 70 ? 'success' : rate >= 30 ? 'warn' : 'fail';
-  box.innerHTML = `
-    <div class="dt-row"><span class="label">희망 던전</span><span class="v" style="color:${TIER_COLORS[tier]}">${cfg.name} (티어 ${tier}) ${a.greedy ? '🎯' : ''}</span></div>
-    <div class="dt-row"><span class="label">조정 성공률 ${gapTxt}</span><span class="v ${rateColor}">${rate}%</span></div>
-    <div class="dt-row"><span class="label">조정 소요 시간</span><span class="v">${formatDuration(dur)}</span></div>
-    <div class="dt-row"><span class="label">예상 보수 (성공 시)</span><span class="v">+${playerGold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[tier]}</span></div>
-    <div class="dt-row"><span class="label">용사 보수 (${a.payRate}%)</span><span class="v warn">−${heroCut.toLocaleString()} G</span></div>
-  `;
+  // Defensive: applicant fields may be partially missing if the schema drifted.
+  // Catch any error and surface it instead of silently leaving the previous
+  // empty-state HTML in place.
+  try {
+    box.classList.remove('empty');
+    const tier = a.desiredDungeonTier;
+    const cfg = balance.dungeons && balance.dungeons[tier];
+    if (!cfg) throw new Error('던전 설정 없음 (tier=' + tier + ')');
+    const dur = adjustedDuration(selectedSwordLevel, tier, a.tier);
+    const rate = adjustedSuccessRate(selectedSwordLevel, tier, a.tier);
+    const reward = dungeonRewards(tier, 1);
+    const heroCut = Math.floor(reward.gold * a.payRate / 100);
+    const playerGold = reward.gold - heroCut;
+    const swordGap = getTier(selectedSwordLevel) - tier;
+    const heroGap = a.tier - tier;
+    let gapNotes = [];
+    if (swordGap !== 0) gapNotes.push(`검 ${swordGap > 0 ? '+' : ''}${swordGap}티어`);
+    if (heroGap !== 0) gapNotes.push(`용사 ${heroGap > 0 ? '+' : ''}${heroGap}티어`);
+    const gapTxt = gapNotes.length ? `(${gapNotes.join(', ')})` : '';
+    const rateColor = rate >= 70 ? 'success' : rate >= 30 ? 'warn' : 'fail';
+    box.innerHTML = `
+      <div class="dt-row"><span class="label">희망 던전</span><span class="v" style="color:${TIER_COLORS[tier]}">${cfg.name} (티어 ${tier}) ${a.greedy ? '🎯' : ''}</span></div>
+      <div class="dt-row"><span class="label">조정 성공률 ${gapTxt}</span><span class="v ${rateColor}">${rate}%</span></div>
+      <div class="dt-row"><span class="label">조정 소요 시간</span><span class="v">${formatDuration(dur)}</span></div>
+      <div class="dt-row"><span class="label">예상 보수 (성공 시)</span><span class="v">+${playerGold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[tier]}</span></div>
+      <div class="dt-row"><span class="label">용사 보수 (${a.payRate}%)</span><span class="v warn">−${heroCut.toLocaleString()} G</span></div>
+    `;
+  } catch (e) {
+    console.warn('renderDungeonTarget failed:', e, 'applicant:', a);
+    box.classList.add('empty');
+    box.innerHTML = '⚠️ 출정 정보 표시 실패: ' + (e.message || e);
+  }
 }
 
 function renderApplicants() {
