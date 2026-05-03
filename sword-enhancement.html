@@ -1,0 +1,5294 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>검 강화하기 - Sword Enhancement</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Galmuri11&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-dark: #0d0a18;
+    --bg-mid: #1c1530;
+    --bg-light: #2a1f4a;
+    --panel: #14101e;
+    --panel-border: #4a3870;
+    --accent: #ffd700;
+    --accent-2: #ff6b35;
+    --success: #4ade80;
+    --fail: #ef4444;
+    --warn: #fbbf24;
+    --info: #93c5fd;
+    --teal: #5eead4;
+    --pink: #f0abfc;
+    --text: #e8e3ff;
+    --text-dim: #9b8fbf;
+  }
+
+  html, body {
+    height: 100%;
+    background:
+      radial-gradient(ellipse at top, var(--bg-light) 0%, var(--bg-dark) 60%),
+      var(--bg-dark);
+    color: var(--text);
+    font-family: 'Galmuri11', 'Press Start 2P', monospace;
+    overflow-x: hidden;
+    image-rendering: pixelated;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 3px);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ===== NAV BAR (shared with rental/dungeon) ===== */
+  .nav-bar {
+    position: relative;
+    z-index: 5;
+    background: linear-gradient(180deg, var(--panel) 0%, #0a0716 100%);
+    border-bottom: 2px solid var(--panel-border);
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+  }
+  .nav-link {
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: 6px 14px;
+    border: 2px solid transparent;
+    font-family: inherit;
+    letter-spacing: 1px;
+    transition: all 0.1s;
+  }
+  .nav-link:hover { color: var(--text); border-color: var(--panel-border); }
+  .nav-link.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(255,215,0,0.05);
+  }
+  .nav-spacer { flex: 1; }
+  .nav-info {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+  .nav-info .v {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    margin-left: 4px;
+  }
+
+  .game-wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px 20px;
+    display: grid;
+    grid-template-columns: 300px 1fr 320px;
+    gap: 18px;
+    align-items: start;
+  }
+
+  @media (max-width: 1100px) {
+    .game-wrap { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: linear-gradient(180deg, var(--panel) 0%, #0a0716 100%);
+    border: 3px solid var(--panel-border);
+    border-radius: 0;
+    padding: 16px;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.05),
+      0 0 0 3px var(--bg-dark),
+      0 0 20px rgba(74, 56, 112, 0.4);
+    position: relative;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: -3px; left: -3px; right: -3px; bottom: -3px;
+    background:
+      linear-gradient(45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) top left / 12px 12px no-repeat,
+      linear-gradient(-45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) top right / 12px 12px no-repeat,
+      linear-gradient(-45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) bottom left / 12px 12px no-repeat,
+      linear-gradient(45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) bottom right / 12px 12px no-repeat;
+    pointer-events: none;
+  }
+
+  .panel h2 {
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+    text-shadow: 2px 2px 0 #000;
+    border-bottom: 2px dashed var(--panel-border);
+    padding-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .panel h2 .meta {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0;
+  }
+
+  .center-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .title { text-align: center; margin-bottom: 16px; }
+  .title h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 22px;
+    color: var(--accent);
+    text-shadow:
+      3px 3px 0 #000,
+      -1px -1px 0 var(--accent-2),
+      0 0 20px rgba(255, 215, 0, 0.4);
+    letter-spacing: 2px;
+  }
+  .title .sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+
+  .sword-stage {
+    background:
+      radial-gradient(ellipse at center, rgba(255,215,0,0.06) 0%, transparent 70%),
+      linear-gradient(180deg, #1a1430 0%, #0d0a18 100%);
+    border: 3px solid var(--panel-border);
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    max-width: 460px;
+    position: relative;
+    overflow: hidden;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sword-stage::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 25%;
+    background:
+      linear-gradient(180deg, transparent 0%, rgba(74, 56, 112, 0.3) 100%),
+      repeating-linear-gradient(0deg, transparent 0 7px, rgba(74, 56, 112, 0.4) 7px 8px),
+      repeating-linear-gradient(90deg, transparent 0 7px, rgba(74, 56, 112, 0.4) 7px 8px);
+    transform: perspective(120px) rotateX(40deg);
+    transform-origin: top center;
+  }
+
+  .sparkles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .sword-container {
+    position: relative;
+    z-index: 5;
+    transition: transform 0.3s cubic-bezier(0.5, 1.6, 0.4, 1);
+    filter: drop-shadow(0 0 10px var(--glow, transparent));
+  }
+
+  .sword-container.shake { animation: shake 0.5s ease-in-out; }
+  .sword-container.success { animation: success-pulse 0.8s ease-out; }
+  .sword-container.fail { animation: fail-flash 0.5s ease-out; }
+  .sword-container.broken { animation: broken-anim 0.9s ease-in; }
+  .sword-container.sold { animation: sold-anim 0.7s ease-in; }
+  .sword-container.stored { animation: stored-anim 0.7s ease-in; }
+  .sword-container.protect { animation: protect-anim 0.7s ease-out; }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0) rotate(0); }
+    20% { transform: translateX(-8px) rotate(-3deg); }
+    40% { transform: translateX(8px) rotate(3deg); }
+    60% { transform: translateX(-6px) rotate(-2deg); }
+    80% { transform: translateX(6px) rotate(2deg); }
+  }
+  @keyframes success-pulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 10px var(--glow)) brightness(1); }
+    50% { transform: scale(1.15); filter: drop-shadow(0 0 30px var(--glow)) brightness(1.8); }
+    100% { transform: scale(1); filter: drop-shadow(0 0 10px var(--glow)) brightness(1); }
+  }
+  @keyframes fail-flash {
+    0%, 100% { filter: drop-shadow(0 0 10px var(--glow)) brightness(1); }
+    50% { filter: drop-shadow(0 0 20px #ef4444) brightness(0.6) saturate(0.3); }
+  }
+  @keyframes broken-anim {
+    0% { transform: scale(1) rotate(0); opacity: 1; }
+    50% { transform: scale(1.2) rotate(8deg); opacity: 1; filter: brightness(2) drop-shadow(0 0 30px #ef4444); }
+    99% { transform: scale(0.4) rotate(-30deg); opacity: 0; filter: brightness(0.3); }
+    100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 10px var(--glow)); }
+  }
+  @keyframes sold-anim {
+    0% { transform: scale(1) translateY(0); opacity: 1; }
+    99% { transform: scale(0.6) translateY(-80px); opacity: 0; filter: brightness(2); }
+    100% { transform: scale(1) translateY(0); opacity: 1; filter: drop-shadow(0 0 10px var(--glow)); }
+  }
+  @keyframes stored-anim {
+    0% { transform: scale(1) translate(0,0); opacity: 1; }
+    99% { transform: scale(0.3) translate(120px, -100px); opacity: 0; filter: brightness(1.5); }
+    100% { transform: scale(1) translate(0,0); opacity: 1; filter: drop-shadow(0 0 10px var(--glow)); }
+  }
+  @keyframes protect-anim {
+    0% { filter: drop-shadow(0 0 10px var(--glow)) brightness(1); }
+    30% { filter: drop-shadow(0 0 35px #5eead4) brightness(1.6); }
+    100% { filter: drop-shadow(0 0 10px var(--glow)) brightness(1); }
+  }
+
+  .level-badge {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel);
+    border: 2px solid var(--accent);
+    padding: 6px 18px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    color: var(--accent);
+    text-shadow: 2px 2px 0 #000;
+    z-index: 10;
+    letter-spacing: 2px;
+  }
+
+  .tier-name {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--text-dim);
+    z-index: 10;
+    letter-spacing: 2px;
+    text-shadow: 1px 1px 0 #000;
+    background: rgba(0,0,0,0.4);
+    padding: 4px 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    max-width: 460px;
+    margin-top: 16px;
+  }
+  .btn {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 14px 8px;
+    background: linear-gradient(180deg, #3a2a5e 0%, #1f1538 100%);
+    color: var(--text);
+    border: 3px solid var(--panel-border);
+    border-bottom-width: 5px;
+    cursor: pointer;
+    text-shadow: 1px 1px 0 #000;
+    letter-spacing: 1px;
+    transition: all 0.08s;
+    image-rendering: pixelated;
+    position: relative;
+  }
+  .btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #4a3878 0%, #2a1f4a 100%);
+    transform: translateY(-1px);
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(2px);
+    border-bottom-width: 3px;
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn.primary {
+    background: linear-gradient(180deg, #d97706 0%, #92400e 100%);
+    border-color: var(--accent);
+    color: #fff;
+    font-size: 16px;
+    grid-column: span 2;
+    padding: 18px;
+  }
+  .btn.primary:hover:not(:disabled) {
+    background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  }
+  .btn.sell {
+    background: linear-gradient(180deg, #15803d 0%, #14532d 100%);
+    border-color: #22c55e;
+  }
+  .btn.sell:hover:not(:disabled) {
+    background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+  }
+  .btn.store {
+    background: linear-gradient(180deg, #0e7490 0%, #155e75 100%);
+    border-color: #06b6d4;
+  }
+  .btn.store:hover:not(:disabled) {
+    background: linear-gradient(180deg, #06b6d4 0%, #0e7490 100%);
+  }
+  .btn.full { grid-column: span 2; }
+  .btn.danger { border-color: #7f1d1d; }
+  .btn .sub-text {
+    display: block;
+    font-size: 10px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 3px;
+  }
+
+  /* Stats */
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 6px 0;
+    border-bottom: 1px dashed rgba(155, 143, 191, 0.2);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .label { color: var(--text-dim); }
+  .stat-row .val {
+    color: var(--text);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+  }
+  .stat-row .val.gold { color: var(--accent); }
+  .stat-row .val.success { color: var(--success); }
+  .stat-row .val.fail { color: var(--fail); }
+  .stat-row .val.info { color: var(--info); }
+  .stat-row .val.teal { color: var(--teal); }
+
+  /* Probability bar */
+  .prob-section {
+    width: 100%;
+    max-width: 460px;
+    margin-top: 12px;
+    background: rgba(0,0,0,0.3);
+    padding: 12px;
+    border: 2px solid var(--panel-border);
+  }
+  .prob-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    margin-bottom: 6px;
+    color: var(--text-dim);
+  }
+  .prob-label .pct {
+    font-family: 'Press Start 2P', monospace;
+    color: var(--success);
+    font-size: 13px;
+  }
+  .prob-bar {
+    height: 16px;
+    background: #000;
+    border: 2px solid #333;
+    overflow: hidden;
+    position: relative;
+  }
+  .prob-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4ade80 0%, #fbbf24 50%, #ef4444 100%);
+    transition: width 0.3s;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.3);
+  }
+
+  /* Items */
+  .item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(0,0,0,0.3);
+    padding: 8px;
+    border: 2px solid #2a2040;
+  }
+  .item-icon {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    image-rendering: pixelated;
+  }
+  .item-info {
+    flex: 1;
+    font-size: 11px;
+  }
+  .item-info .name { color: var(--text); }
+  .item-info .desc { color: var(--text-dim); font-size: 10px; }
+  .item-count {
+    font-family: 'Press Start 2P', monospace;
+    color: var(--accent);
+    font-size: 12px;
+  }
+  .item-use-btn {
+    margin-top: 6px;
+    font-size: 10px;
+    padding: 4px 8px;
+    width: 100%;
+  }
+  .item.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 8px rgba(255,215,0,0.3);
+  }
+  .item.active .item-icon { animation: bobble 1.2s ease-in-out infinite; }
+  @keyframes bobble {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
+  /* Shop */
+  .shop-divider {
+    margin: 14px 0 8px;
+    text-align: center;
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 3px;
+    border-top: 2px dashed var(--panel-border);
+    padding-top: 10px;
+  }
+  .shop-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .shop-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    font-size: 11px;
+    background: linear-gradient(180deg, #3a2a5e 0%, #1f1538 100%);
+    color: var(--text);
+    border: 2px solid var(--panel-border);
+    border-bottom-width: 4px;
+    cursor: pointer;
+    text-shadow: 1px 1px 0 #000;
+    font-family: inherit;
+  }
+  .shop-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #4a3878 0%, #2a1f4a 100%);
+  }
+  .shop-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .shop-btn .price {
+    font-family: 'Press Start 2P', monospace;
+    color: var(--accent);
+    font-size: 10px;
+  }
+  .shop-btn.bulk { border-color: #ffd700; }
+
+  /* Collection */
+  .collection-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+  }
+  .col-cell {
+    position: relative;
+    aspect-ratio: 0.85;
+    background: rgba(0,0,0,0.45);
+    border: 2px solid #2a2040;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 2px 2px 2px;
+    cursor: help;
+    transition: transform 0.12s, border-color 0.12s;
+  }
+  .col-cell:hover { transform: translateY(-2px); }
+  .col-cell.unlocked { border-color: #4a3870; }
+  .col-cell.unlocked.has-count { border-color: var(--accent); box-shadow: 0 0 6px rgba(255,215,0,0.4); }
+  .col-cell.material-needed { border-color: var(--warn); animation: pulse-warn 1.4s ease-in-out infinite; }
+  @keyframes pulse-warn {
+    0%, 100% { box-shadow: 0 0 0 rgba(251,191,36,0); }
+    50% { box-shadow: 0 0 8px rgba(251,191,36,0.6); }
+  }
+  .col-cell.locked { background: rgba(0,0,0,0.6); }
+  .col-lvl {
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 7px;
+    color: var(--text-dim);
+    text-shadow: 1px 1px 0 #000;
+  }
+  .col-cell.unlocked.has-count .col-lvl { color: var(--accent); }
+  .col-sword {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    overflow: hidden;
+  }
+  .col-sword svg {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+  }
+  .col-count {
+    position: absolute;
+    bottom: 1px;
+    right: 2px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    color: var(--accent);
+    text-shadow: 1px 1px 0 #000;
+    background: rgba(0,0,0,0.85);
+    padding: 1px 3px;
+    border: 1px solid var(--accent);
+    line-height: 1;
+  }
+
+  .collection-summary {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    padding: 6px 8px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--panel-border);
+  }
+  .collection-summary span.val {
+    font-family: 'Press Start 2P', monospace;
+    color: var(--accent);
+    font-size: 11px;
+  }
+
+  /* Diablo-style hover tooltip */
+  .dt-tooltip {
+    position: fixed;
+    background: linear-gradient(180deg, rgba(20,16,30,0.98) 0%, rgba(10,7,22,0.98) 100%);
+    border: 2px solid var(--accent);
+    padding: 14px 16px;
+    font-size: 11px;
+    color: var(--text);
+    pointer-events: none;
+    z-index: 300;
+    display: none;
+    min-width: 220px;
+    max-width: 280px;
+    box-shadow: 0 0 24px rgba(255,215,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+    font-family: 'Galmuri11', monospace;
+    line-height: 1.4;
+  }
+  .dt-tooltip.show { display: block; }
+  .dt-tooltip .dt-name {
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+    text-shadow: 1px 1px 0 #000;
+  }
+  .dt-tooltip .dt-tier {
+    color: var(--text-dim);
+    font-size: 10px;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+  }
+  .dt-tooltip .dt-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #4a3870 20%, #4a3870 80%, transparent);
+    margin: 8px 0;
+  }
+  .dt-tooltip .dt-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 1px 0;
+    font-size: 11px;
+  }
+  .dt-tooltip .dt-row .dt-label { color: var(--text-dim); }
+  .dt-tooltip .dt-row .dt-val {
+    color: var(--text);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+  }
+  .dt-tooltip .dt-row .dt-val.gold { color: var(--accent); }
+  .dt-tooltip .dt-row .dt-val.success { color: var(--success); }
+  .dt-tooltip .dt-row .dt-val.teal { color: var(--teal); }
+  .dt-tooltip .dt-row .dt-val.warn { color: var(--warn); }
+  .dt-tooltip .dt-row .dt-val.pink { color: var(--pink); }
+  .dt-tooltip .dt-lore {
+    color: #c084fc;
+    font-style: italic;
+    font-size: 10px;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+  .dt-tooltip .dt-hint {
+    color: var(--teal);
+    font-size: 10px;
+    margin-top: 8px;
+    text-align: center;
+    border-top: 1px dashed #4a3870;
+    padding-top: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Collection action modal */
+  .action-modal { max-width: 420px; }
+  .action-modal-info {
+    background: rgba(0,0,0,0.45);
+    border: 1px solid var(--panel-border);
+    padding: 8px 12px;
+    margin: 12px 0;
+    font-size: 11px;
+  }
+  .action-modal-info .ami-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+  }
+  .action-modal-info .ami-row .val {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+  }
+  .action-modal-info .ami-row .val.gold { color: var(--accent); }
+  .action-modal-info .ami-row .val.teal { color: var(--teal); }
+  .action-section {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid #2a2040;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .action-section .section-title {
+    font-size: 11px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    text-align: left;
+  }
+  .action-help {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    text-align: center;
+  }
+  .qty-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 8px 0;
+  }
+  .qty-display {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--panel-border);
+    padding: 6px 12px;
+    min-width: 60px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .qty-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    background: linear-gradient(180deg, #3a2a5e 0%, #1f1538 100%);
+    color: var(--text);
+    border: 2px solid var(--panel-border);
+    border-bottom-width: 4px;
+    padding: 6px 8px;
+    cursor: pointer;
+    text-shadow: 1px 1px 0 #000;
+    letter-spacing: 0.5px;
+  }
+  .qty-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #4a3878 0%, #2a1f4a 100%);
+  }
+  .qty-btn:active:not(:disabled) {
+    transform: translateY(2px);
+    border-bottom-width: 2px;
+  }
+  .qty-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    margin: 8px 0;
+    padding: 8px 10px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--panel-border);
+  }
+  .total-row .val {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 13px;
+    color: var(--accent);
+  }
+  .col-cell.clickable { cursor: pointer; }
+  .col-cell.clickable:hover {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 12px rgba(255,215,0,0.6) !important;
+    transform: translateY(-3px);
+  }
+
+  /* ===== ADMIN PANEL ===== */
+  .admin-toggle {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    background: var(--panel);
+    border: 2px solid #ec4899;
+    color: #ec4899;
+    font-family: inherit;
+    font-size: 11px;
+    padding: 6px 12px;
+    cursor: pointer;
+    z-index: 50;
+    display: none;
+    letter-spacing: 1px;
+  }
+  .admin-toggle.show { display: block; }
+  .admin-toggle:hover { background: #ec4899; color: #fff; }
+
+  .admin-panel {
+    position: fixed;
+    top: 0;
+    right: -560px;
+    bottom: 0;
+    width: 560px;
+    max-width: 95vw;
+    background: linear-gradient(180deg, var(--panel) 0%, #0a0716 100%);
+    border-left: 3px solid #ec4899;
+    box-shadow: -8px 0 30px rgba(0,0,0,0.6);
+    transition: right 0.3s ease-out;
+    z-index: 250;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Galmuri11', monospace;
+  }
+  .admin-panel.show { right: 0; }
+
+  .admin-header {
+    padding: 14px 18px;
+    background: rgba(236, 72, 153, 0.12);
+    border-bottom: 2px solid #ec4899;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .admin-header h2 {
+    font-size: 14px;
+    color: #ec4899;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 0 #000;
+    margin: 0;
+  }
+  .admin-header .admin-close {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid #ec4899;
+    color: #ec4899;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 12px;
+    font-family: inherit;
+  }
+  .admin-header .admin-close:hover { background: #ec4899; color: #000; }
+
+  .admin-tabs {
+    display: flex;
+    background: #0a0716;
+    border-bottom: 2px solid var(--panel-border);
+    flex-shrink: 0;
+  }
+  .admin-tab {
+    flex: 1;
+    padding: 10px 6px;
+    background: transparent;
+    color: var(--text-dim);
+    border: none;
+    border-right: 1px solid var(--panel-border);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .admin-tab:hover { color: var(--text); }
+  .admin-tab.active {
+    background: var(--panel);
+    color: #ec4899;
+    box-shadow: inset 0 -3px 0 #ec4899;
+  }
+
+  .admin-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 18px;
+    font-size: 12px;
+  }
+  .admin-tabpanel { display: none; }
+  .admin-tabpanel.active { display: block; }
+  .admin-section { margin-bottom: 16px; }
+  .admin-section h3 {
+    color: var(--accent);
+    font-size: 12px;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    border-bottom: 1px dashed var(--panel-border);
+    padding-bottom: 4px;
+  }
+  .admin-section .desc {
+    color: var(--text-dim);
+    font-size: 10px;
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+  .admin-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 6px 0;
+    font-size: 11px;
+    gap: 8px;
+  }
+  .admin-row label {
+    color: var(--text-dim);
+    flex: 1;
+  }
+  .admin-row .unit {
+    color: var(--text-dim);
+    font-size: 10px;
+    min-width: 24px;
+  }
+  .admin-row input[type=number],
+  .admin-row input[type=text] {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    padding: 5px 8px;
+    width: 130px;
+  }
+  .admin-row input[type=number]:focus,
+  .admin-row input[type=text]:focus {
+    outline: none;
+    border-color: #ec4899;
+  }
+  .admin-row input[type=color] {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    width: 40px;
+    height: 24px;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .admin-rates-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+    margin-bottom: 8px;
+  }
+  .admin-rates-cell {
+    display: flex;
+    flex-direction: column;
+    font-size: 10px;
+    background: rgba(0,0,0,0.3);
+    padding: 4px 5px;
+    border: 1px solid #2a2040;
+  }
+  .admin-rates-cell .label {
+    color: var(--accent);
+    margin-bottom: 3px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+  }
+  .admin-rates-cell input {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 3px 4px;
+    width: 100%;
+  }
+
+  .admin-failure-rule {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--panel-border);
+    padding: 8px;
+    margin: 6px 0;
+  }
+  .admin-failure-rule .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    margin: 4px 0;
+  }
+  .admin-failure-rule .row label { color: var(--text-dim); flex: 0 0 70px; }
+  .admin-failure-rule input {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 3px 6px;
+    width: 70px;
+  }
+
+  .admin-names-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .admin-name-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+  }
+  .admin-name-row .lvl {
+    color: var(--accent);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    width: 26px;
+    flex-shrink: 0;
+  }
+  .admin-name-row input {
+    flex: 1;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 11px;
+    padding: 3px 5px;
+    min-width: 0;
+  }
+
+  .admin-tier-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 6px 0;
+    font-size: 11px;
+  }
+  .admin-tier-row .tier-idx {
+    color: var(--accent);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    width: 60px;
+  }
+  .admin-tier-row input[type=text] {
+    flex: 1;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 11px;
+    padding: 4px 6px;
+    min-width: 0;
+  }
+  .admin-tier-row input[type=color] {
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    width: 36px;
+    height: 22px;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .admin-lore-row {
+    margin: 8px 0;
+  }
+  .admin-lore-row .lore-label {
+    color: var(--accent);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    margin-bottom: 3px;
+  }
+  .admin-lore-row textarea {
+    width: 100%;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 11px;
+    padding: 5px 8px;
+    resize: vertical;
+    min-height: 36px;
+    line-height: 1.4;
+  }
+
+  .admin-footer {
+    padding: 12px 18px;
+    background: #0a0716;
+    border-top: 2px solid var(--panel-border);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .admin-footer .admin-btn-apply {
+    grid-column: span 3;
+    margin-top: 4px;
+  }
+  .admin-btn {
+    font-family: inherit;
+    font-size: 11px;
+    padding: 8px 6px;
+    background: linear-gradient(180deg, #3a2a5e 0%, #1f1538 100%);
+    color: var(--text);
+    border: 2px solid var(--panel-border);
+    border-bottom-width: 4px;
+    cursor: pointer;
+    text-shadow: 1px 1px 0 #000;
+    letter-spacing: 0.5px;
+  }
+  .admin-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #4a3878 0%, #2a1f4a 100%);
+  }
+  .admin-btn.apply {
+    border-color: #22c55e;
+    background: linear-gradient(180deg, #15803d 0%, #14532d 100%);
+    font-size: 13px;
+    padding: 10px;
+  }
+  .admin-btn.apply:hover {
+    background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+  }
+  .admin-btn.danger { border-color: #ef4444; }
+  .admin-btn.danger:hover { background: linear-gradient(180deg, #b91c1c 0%, #7f1d1d 100%); }
+
+  .admin-info-box {
+    background: rgba(236, 72, 153, 0.08);
+    border: 1px solid rgba(236, 72, 153, 0.3);
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    font-size: 10px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .admin-info-box strong { color: #ec4899; }
+
+  /* ===== DEBUG PANEL (orange theme) ===== */
+  .debug-toggle {
+    position: fixed;
+    top: 50px;
+    right: 12px;
+    background: var(--panel);
+    border: 2px solid #f97316;
+    color: #f97316;
+    font-family: inherit;
+    font-size: 11px;
+    padding: 6px 12px;
+    cursor: pointer;
+    z-index: 50;
+    display: none;
+    letter-spacing: 1px;
+  }
+  .debug-toggle.show { display: block; }
+  .debug-toggle:hover { background: #f97316; color: #000; }
+
+  .debug-panel {
+    position: fixed;
+    top: 0;
+    right: -560px;
+    bottom: 0;
+    width: 560px;
+    max-width: 95vw;
+    background: linear-gradient(180deg, var(--panel) 0%, #0a0716 100%);
+    border-left: 3px solid #f97316;
+    box-shadow: -8px 0 30px rgba(0,0,0,0.6);
+    transition: right 0.3s ease-out;
+    z-index: 250;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Galmuri11', monospace;
+  }
+  .debug-panel.show { right: 0; }
+  .debug-header {
+    padding: 14px 18px;
+    background: rgba(249, 115, 22, 0.12);
+    border-bottom: 2px solid #f97316;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .debug-header h2 {
+    font-size: 14px;
+    color: #f97316;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 0 #000;
+    margin: 0;
+  }
+  .debug-header .debug-close {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid #f97316;
+    color: #f97316;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 4px 12px;
+    font-family: inherit;
+  }
+  .debug-header .debug-close:hover { background: #f97316; color: #000; }
+
+  .debug-tabs {
+    display: flex;
+    background: #0a0716;
+    border-bottom: 2px solid var(--panel-border);
+    flex-shrink: 0;
+  }
+  .debug-tab {
+    flex: 1;
+    padding: 10px 6px;
+    background: transparent;
+    color: var(--text-dim);
+    border: none;
+    border-right: 1px solid var(--panel-border);
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .debug-tab:hover { color: var(--text); }
+  .debug-tab.active {
+    background: var(--panel);
+    color: #f97316;
+    box-shadow: inset 0 -3px 0 #f97316;
+  }
+  .debug-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 18px;
+    font-size: 12px;
+  }
+  .debug-tabpanel { display: none; }
+  .debug-tabpanel.active { display: block; }
+  .debug-section { margin-bottom: 16px; }
+  .debug-section h3 {
+    color: var(--accent);
+    font-size: 12px;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    border-bottom: 1px dashed var(--panel-border);
+    padding-bottom: 4px;
+  }
+  .debug-section .desc {
+    color: var(--text-dim);
+    font-size: 10px;
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+  .debug-row {
+    display: flex;
+    align-items: center;
+    margin: 6px 0;
+    font-size: 11px;
+    gap: 8px;
+  }
+  .debug-row label {
+    color: var(--text-dim);
+    flex: 1;
+  }
+  .debug-row input[type=number],
+  .debug-row input[type=text] {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    padding: 5px 8px;
+    width: 130px;
+  }
+  .debug-row input:focus { outline: none; border-color: #f97316; }
+  .debug-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .debug-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+  }
+  .debug-btn {
+    font-family: inherit;
+    font-size: 11px;
+    padding: 8px 6px;
+    background: linear-gradient(180deg, #3a2a5e 0%, #1f1538 100%);
+    color: var(--text);
+    border: 2px solid var(--panel-border);
+    border-bottom-width: 4px;
+    cursor: pointer;
+    text-shadow: 1px 1px 0 #000;
+    letter-spacing: 0.5px;
+  }
+  .debug-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #4a3878 0%, #2a1f4a 100%);
+  }
+  .debug-btn:active:not(:disabled) {
+    transform: translateY(2px);
+    border-bottom-width: 2px;
+  }
+  .debug-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .debug-btn.small { padding: 5px 10px; font-size: 10px; }
+  .debug-btn.danger { border-color: #ef4444; color: #fca5a5; }
+  .debug-btn.danger:hover { background: linear-gradient(180deg, #b91c1c 0%, #7f1d1d 100%); color: #fff; }
+  .debug-btn.active {
+    border-color: #f97316;
+    background: linear-gradient(180deg, #c2410c 0%, #7c2d12 100%);
+    color: #fed7aa;
+  }
+  .debug-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 6px 0;
+    padding: 6px 10px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid #2a2040;
+    font-size: 11px;
+  }
+  .debug-toggle-row label { color: var(--text); flex: 1; }
+  .debug-toggle-row input[type=checkbox] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #f97316;
+  }
+  .debug-cheat-current {
+    background: rgba(249, 115, 22, 0.1);
+    border: 1px solid #f97316;
+    color: #f97316;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    text-align: center;
+  }
+  .debug-coll-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-bottom: 1px dashed rgba(155, 143, 191, 0.15);
+    font-size: 10px;
+  }
+  .debug-coll-row .lvl {
+    color: var(--accent);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    width: 30px;
+    flex-shrink: 0;
+  }
+  .debug-coll-row .name {
+    flex: 1;
+    color: var(--text-dim);
+    font-size: 10px;
+  }
+  .debug-coll-row input[type=number] {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 3px 6px;
+    width: 60px;
+  }
+  .debug-coll-row input[type=checkbox] {
+    width: 14px;
+    height: 14px;
+    accent-color: #f97316;
+  }
+  .debug-info-box {
+    background: rgba(249, 115, 22, 0.08);
+    border: 1px solid rgba(249, 115, 22, 0.3);
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    font-size: 10px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .debug-info-box strong { color: #f97316; }
+  .debug-code {
+    background: #000;
+    color: #fb923c;
+    padding: 2px 6px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    border: 1px solid #2a2040;
+  }
+
+  /* ===== FORGE SETUP / RENAME MODAL ===== */
+  .forge-modal-bg {
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse at center, rgba(20,16,30,0.95) 0%, rgba(0,0,0,0.97) 80%);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 400;
+  }
+  .forge-modal-bg.show { display: flex; }
+  .forge-card {
+    background: linear-gradient(180deg, var(--panel) 0%, #0a0716 100%);
+    border: 3px solid var(--accent);
+    padding: 36px 32px 28px;
+    max-width: 460px;
+    width: 92%;
+    text-align: center;
+    box-shadow: 0 0 60px rgba(255,215,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.05);
+    position: relative;
+  }
+  .forge-card::before {
+    content: '';
+    position: absolute;
+    top: -3px; left: -3px; right: -3px; bottom: -3px;
+    background:
+      linear-gradient(45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) top left / 16px 16px no-repeat,
+      linear-gradient(-45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) top right / 16px 16px no-repeat,
+      linear-gradient(-45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) bottom left / 16px 16px no-repeat,
+      linear-gradient(45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) bottom right / 16px 16px no-repeat;
+    pointer-events: none;
+  }
+  .forge-card h2 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    color: var(--accent);
+    margin-bottom: 18px;
+    letter-spacing: 2px;
+    text-shadow: 3px 3px 0 #000, 0 0 20px rgba(255,215,0,0.5);
+    animation: forge-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes forge-pulse {
+    0%, 100% { text-shadow: 3px 3px 0 #000, 0 0 20px rgba(255,215,0,0.5); }
+    50% { text-shadow: 3px 3px 0 #000, 0 0 35px rgba(255,215,0,0.9); }
+  }
+  .forge-card .desc {
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 8px;
+    line-height: 1.6;
+  }
+  .forge-card .hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  .forge-card .migration-notice {
+    background: rgba(240, 171, 252, 0.1);
+    border: 1px solid var(--pink);
+    color: var(--pink);
+    padding: 10px 14px;
+    font-size: 11px;
+    margin-bottom: 16px;
+    line-height: 1.5;
+    text-align: left;
+  }
+  .forge-card .migration-notice strong { display: block; margin-bottom: 4px; }
+  .forge-card input[type=text] {
+    width: 100%;
+    background: rgba(0,0,0,0.6);
+    border: 2px solid var(--panel-border);
+    color: var(--accent);
+    font-family: 'Galmuri11', monospace;
+    font-size: 16px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    text-align: center;
+    outline: none;
+    letter-spacing: 1px;
+  }
+  .forge-card input[type=text]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(255,215,0,0.3);
+  }
+  .forge-card .err-msg {
+    color: var(--fail);
+    font-size: 11px;
+    margin-bottom: 10px;
+    min-height: 16px;
+  }
+  .forge-card .forge-btn {
+    width: 100%;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 12px;
+    background: linear-gradient(180deg, #d97706 0%, #92400e 100%);
+    color: #fff;
+    border: 3px solid var(--accent);
+    border-bottom-width: 5px;
+    cursor: pointer;
+    text-shadow: 1px 1px 0 #000;
+    letter-spacing: 2px;
+  }
+  .forge-card .forge-btn:hover { background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%); }
+  .forge-card .forge-btn:active { transform: translateY(2px); border-bottom-width: 3px; }
+  .forge-card .forge-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .forge-card .forge-actions .forge-btn { flex: 1; font-size: 12px; padding: 10px; }
+  .forge-card .forge-btn.cancel {
+    background: linear-gradient(180deg, #3a2a5e 0%, #1f1538 100%);
+    border-color: var(--panel-border);
+    color: var(--text);
+  }
+  .forge-card .forge-btn.cancel:hover {
+    background: linear-gradient(180deg, #4a3878 0%, #2a1f4a 100%);
+  }
+
+  /* Forge name display below title */
+  .forge-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 11px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--panel-border);
+    padding: 5px 12px;
+  }
+  .forge-display .forge-icon { font-size: 13px; }
+  .forge-display .forge-name {
+    font-family: 'Galmuri11', monospace;
+    color: var(--accent);
+    letter-spacing: 1px;
+    font-size: 12px;
+  }
+  .forge-display .forge-rename-btn {
+    background: transparent;
+    border: 1px solid rgba(155, 143, 191, 0.4);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 10px;
+    padding: 2px 7px;
+    cursor: pointer;
+    margin-left: 4px;
+  }
+  .forge-display .forge-rename-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Log */
+  .log {
+    background: rgba(0,0,0,0.4);
+    border: 2px solid #2a2040;
+    height: 160px;
+    overflow-y: auto;
+    padding: 8px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .log-entry { padding: 2px 4px; }
+  .log-entry.success { color: var(--success); }
+  .log-entry.fail { color: var(--warn); }
+  .log-entry.destroy { color: var(--fail); font-weight: bold; }
+  .log-entry.info { color: var(--text-dim); }
+  .log-entry.gain { color: var(--info); }
+  .log-entry.sell { color: var(--teal); }
+  .log-entry.store { color: var(--accent); }
+  .log-entry.unlock { color: var(--pink); font-weight: bold; }
+  .log-entry.protect { color: var(--teal); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: var(--panel);
+    border: 3px solid var(--accent);
+    padding: 16px 32px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    z-index: 100;
+    transition: transform 0.4s cubic-bezier(0.5, 1.6, 0.4, 1);
+    text-shadow: 2px 2px 0 #000;
+    pointer-events: none;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { color: var(--success); border-color: var(--success); }
+  .toast.fail { color: var(--warn); border-color: var(--warn); }
+  .toast.destroy { color: var(--fail); border-color: var(--fail); animation: toast-shake 0.5s; }
+  .toast.sell { color: var(--teal); border-color: var(--teal); }
+  .toast.store { color: var(--accent); border-color: var(--accent); }
+  .toast.unlock { color: var(--pink); border-color: var(--pink); }
+  .toast.protect { color: var(--teal); border-color: var(--teal); }
+  @keyframes toast-shake {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    25% { transform: translateX(calc(-50% - 8px)) translateY(0); }
+    75% { transform: translateX(calc(-50% + 8px)) translateY(0); }
+  }
+
+  .particle {
+    position: absolute;
+    width: 6px; height: 6px;
+    pointer-events: none;
+    z-index: 8;
+    image-rendering: pixelated;
+  }
+
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 3px solid var(--accent);
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+  }
+  .modal h3 {
+    color: var(--accent);
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  .modal p {
+    font-size: 12px;
+    margin-bottom: 16px;
+    line-height: 1.6;
+    white-space: pre-line;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .modal-actions .btn { flex: 1; font-size: 11px; padding: 10px; }
+
+  .footer-bar {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .sound-toggle {
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    background: var(--panel);
+    border: 2px solid var(--panel-border);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 11px;
+    padding: 6px 10px;
+    cursor: pointer;
+    z-index: 50;
+  }
+  .sound-toggle:hover { color: var(--accent); border-color: var(--accent); }
+
+  .item-modifier {
+    color: var(--success);
+    font-size: 10px;
+    margin-left: 4px;
+  }
+  .material-warning { color: var(--fail); }
+  .material-ok { color: var(--warn); }
+
+  .top-bar {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 460px;
+    margin-bottom: 12px;
+    gap: 6px;
+  }
+  .top-gold-row {
+    background: linear-gradient(180deg, rgba(255,215,0,0.10) 0%, rgba(0,0,0,0.45) 100%);
+    border: 2px solid var(--accent);
+    padding: 12px 16px;
+    text-align: center;
+    box-shadow: inset 0 0 0 1px rgba(255,215,0,0.08), 0 0 18px rgba(255,215,0,0.18);
+  }
+  .top-gold-row .l {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 3px;
+    margin-bottom: 4px;
+  }
+  .top-gold-row .v {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 22px;
+    color: var(--accent);
+    text-shadow: 2px 2px 0 #000, 0 0 12px rgba(255,215,0,0.45);
+    line-height: 1.1;
+  }
+  .top-items-row {
+    display: flex;
+    gap: 6px;
+  }
+  .top-items-row .top-stat {
+    flex: 1;
+    background: rgba(0,0,0,0.4);
+    border: 2px solid var(--panel-border);
+    padding: 5px 4px;
+    text-align: center;
+    min-width: 0;
+  }
+  .top-items-row .top-stat .l { font-size: 9px; color: var(--text-dim); }
+  .top-items-row .top-stat .v {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    margin-top: 3px;
+  }
+  .top-items-row .top-stat .v.frag { color: var(--info); }
+  .top-items-row .top-stat .v.stone { color: #c084fc; }
+  .top-items-row .top-stat .v.protect { color: var(--teal); }
+
+  /* Page-wide title bar (above the 3-column game-wrap) */
+  .page-title {
+    text-align: center;
+    margin: 0 auto 14px;
+    padding: 24px 20px 0;
+    max-width: 1200px;
+  }
+  .page-title h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 22px;
+    color: var(--accent);
+    text-shadow: 3px 3px 0 #000, -1px -1px 0 var(--accent-2), 0 0 20px rgba(255, 215, 0, 0.4);
+    letter-spacing: 2px;
+  }
+  .page-title .sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+  .page-title .forge-display {
+    margin-top: 10px;
+  }
+
+  /* Tier summon panel */
+  .summon-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .summon-row {
+    background: rgba(0,0,0,0.3);
+    border: 2px solid var(--panel-border);
+    border-bottom-width: 4px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+    transition: all 0.1s;
+    position: relative;
+  }
+  .summon-row:hover:not(.disabled) {
+    background: rgba(0,0,0,0.5);
+    transform: translateY(-1px);
+  }
+  .summon-row:active:not(.disabled) {
+    transform: translateY(2px);
+    border-bottom-width: 2px;
+  }
+  .summon-row.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .summon-row .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .summon-row .tier-label {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+  }
+  .summon-row .res-count {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--text);
+  }
+  .summon-row .info {
+    font-size: 10px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .summon-row .info .cost { color: var(--accent); }
+  .summon-row .info .out { color: var(--info); }
+  .summon-row[data-tier="0"] { border-left: 3px solid #cdd5e0; }
+  .summon-row[data-tier="1"] { border-left: 3px solid #9bd4ff; }
+  .summon-row[data-tier="2"] { border-left: 3px solid #4d6dff; }
+  .summon-row[data-tier="3"] { border-left: 3px solid #c060ff; }
+  .summon-row[data-tier="4"] { border-left: 3px solid #ff5060; }
+  .summon-row[data-tier="5"] { border-left: 3px solid #ffd700; }
+
+  /* Resources bar (6 tier resources) */
+  .resources-bar {
+    display: flex;
+    gap: 4px;
+    width: 100%;
+    max-width: 460px;
+    margin-bottom: 12px;
+  }
+  .resource-stat {
+    flex: 1;
+    background: rgba(0,0,0,0.4);
+    border: 2px solid var(--panel-border);
+    padding: 5px 2px 4px;
+    text-align: center;
+    min-width: 0;
+    transition: border-color 0.2s;
+  }
+  .resource-stat .l {
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-bottom: 2px;
+  }
+  .resource-stat .v {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+  }
+  .resource-stat[data-tier="0"] { border-top-color: #cdd5e0; }
+  .resource-stat[data-tier="0"] .l { color: #cdd5e0; }
+  .resource-stat[data-tier="1"] { border-top-color: #9bd4ff; }
+  .resource-stat[data-tier="1"] .l { color: #9bd4ff; }
+  .resource-stat[data-tier="2"] { border-top-color: #4d6dff; }
+  .resource-stat[data-tier="2"] .l { color: #4d6dff; }
+  .resource-stat[data-tier="3"] { border-top-color: #c060ff; }
+  .resource-stat[data-tier="3"] .l { color: #c060ff; }
+  .resource-stat[data-tier="4"] { border-top-color: #ff5060; }
+  .resource-stat[data-tier="4"] .l { color: #ff5060; }
+  .resource-stat[data-tier="5"] { border-top-color: #ffd700; }
+  .resource-stat[data-tier="5"] .l { color: #ffd700; }
+  .resource-stat .v { color: var(--text); }
+
+</style>
+</head>
+<body>
+
+<header class="nav-bar">
+  <a href="sword-enhancement.html" class="nav-link active">🔥 대장간</a>
+  <a href="sword-rental.html" class="nav-link">⚔ 검 대여소</a>
+  <a href="sword-dungeon.html" class="nav-link">🏰 던전</a>
+  <span class="nav-spacer"></span>
+  <span class="nav-info">
+    🔥 <span id="nav-forge">—</span>
+    <span>활성 <span class="v" id="nav-active">0</span></span>
+  </span>
+</header>
+
+<div class="page-title">
+  <h1>SWORD ENHANCE</h1>
+  <div class="sub">검을 +30 까지 강화해보세요</div>
+  <div class="forge-display" id="forge-display" style="display:none;">
+    <span class="forge-icon">🔥</span>
+    <span class="forge-name" id="forge-name-display">대장간</span>
+    <button class="forge-rename-btn" id="forge-rename-btn" title="이름 변경">✏ 변경</button>
+    <button class="forge-rename-btn" id="forge-switch-btn" title="다른 대장간 선택">⇄ 전환</button>
+  </div>
+</div>
+
+<div class="game-wrap">
+
+  <!-- LEFT: Stats + Inventory + Shop -->
+  <div class="left-col">
+    <div class="panel">
+      <h2>대장간 정보</h2>
+      <div class="stat-row"><span class="label">시도 횟수</span><span class="val" id="stat-attempts">0</span></div>
+      <div class="stat-row"><span class="label">강화 성공</span><span class="val success" id="stat-success">0</span></div>
+      <div class="stat-row"><span class="label">강화 실패</span><span class="val fail" id="stat-fail">0</span></div>
+      <div class="stat-row"><span class="label">파괴된 검</span><span class="val fail" id="stat-broken">0</span></div>
+      <div class="stat-row"><span class="label">판매한 검</span><span class="val info" id="stat-sold">0</span></div>
+      <div class="stat-row"><span class="label">보관한 검</span><span class="val teal" id="stat-stored">0</span></div>
+      <div class="stat-row"><span class="label">최고 강화</span><span class="val gold" id="stat-best">+0</span></div>
+      <div class="stat-row"><span class="label">사용한 골드</span><span class="val gold" id="stat-gold-spent">0</span></div>
+      <div class="stat-row"><span class="label">번 골드</span><span class="val info" id="stat-gold-earned">0</span></div>
+    </div>
+
+    <div class="panel" style="margin-top:18px;">
+      <h2>인벤토리 / 상점</h2>
+      <div class="item-list" id="item-list"></div>
+
+      <div class="shop-divider">─── 상 점 ───</div>
+      <div class="shop-list">
+        <button class="shop-btn" id="buy-stone-btn">
+          <span>강화석 1개 구매</span>
+          <span class="price">100,000 G</span>
+        </button>
+        <button class="shop-btn" id="buy-protect1-btn">
+          <span>보호석 1개 구매</span>
+          <span class="price">2,000,000 G</span>
+        </button>
+        <button class="shop-btn bulk" id="buy-protect10-btn">
+          <span>보호석 10개 묶음</span>
+          <span class="price">15,000,000 G</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:18px;">
+      <h2>티어 소환 <span class="meta">자원 → 무작위 검</span></h2>
+      <div class="summon-list" id="summon-list"></div>
+    </div>
+  </div>
+
+  <!-- CENTER: Game stage -->
+  <div class="center-panel">
+    <div class="top-bar">
+      <div class="top-gold-row">
+        <div class="l">GOLD</div>
+        <div class="v" id="top-gold">1,000,000</div>
+      </div>
+      <div class="top-items-row">
+        <div class="top-stat"><div class="l">검 조각</div><div class="v frag" id="top-frag">0</div></div>
+        <div class="top-stat"><div class="l">강화석</div><div class="v stone" id="top-stone">0</div></div>
+        <div class="top-stat"><div class="l">보호석</div><div class="v protect" id="top-protect">0</div></div>
+      </div>
+    </div>
+
+    <div class="resources-bar" id="resources-bar"></div>
+
+    <div class="sword-stage" id="sword-stage">
+      <div class="level-badge" id="level-badge">+0</div>
+      <div class="sparkles" id="sparkles"></div>
+      <div class="sword-container" id="sword-container"></div>
+      <div class="tier-name" id="tier-name">평범한 철검</div>
+    </div>
+
+    <div class="prob-section">
+      <div class="prob-label">
+        <span>성공 확률</span>
+        <span><span class="pct" id="prob-pct">100%</span><span class="item-modifier" id="prob-modifier"></span></span>
+      </div>
+      <div class="prob-bar"><div class="prob-fill" id="prob-fill" style="width:100%"></div></div>
+      <div class="prob-label" style="margin-top:8px;">
+        <span>다음 강화 비용</span>
+        <span class="pct" id="cost-text" style="color:var(--accent);">100 G</span>
+      </div>
+      <div class="prob-label" id="material-row" style="margin-top:4px; display:none;">
+        <span>추가 재료</span>
+        <span class="pct" id="material-text">—</span>
+      </div>
+      <div class="prob-label" style="margin-top:4px;">
+        <span>판매 가격</span>
+        <span class="pct" id="sell-text" style="color:var(--teal);">360 G</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="enhance-btn">강화하기</button>
+      <button class="btn sell" id="sell-btn">검 판매</button>
+      <button class="btn store" id="store-btn">검 보관</button>
+      <button class="btn danger full" id="reset-btn">처음부터</button>
+    </div>
+
+    <div class="footer-bar">
+      모든 데이터는 매 액션마다 자동 저장됩니다 · v4.0
+    </div>
+  </div>
+
+  <!-- RIGHT: Collection + Log -->
+  <div class="right-col">
+    <div class="panel">
+      <h2>검 보관함 <span class="meta" id="collection-summary">0/31 발견</span></h2>
+      <div class="collection-summary">
+        <span>총 보관 수</span>
+        <span class="val" id="total-stored">0</span>
+      </div>
+      <div class="collection-grid" id="collection-grid"></div>
+    </div>
+
+    <div class="panel" style="margin-top:18px;">
+      <h2>강화 기록</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+</div>
+
+<button class="sound-toggle" id="sound-toggle">🔊 소리 ON</button>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h3 id="modal-title">정말로?</h3>
+    <p id="modal-text">모든 진행 상황이 초기화됩니다.</p>
+    <div class="modal-actions">
+      <button class="btn" id="modal-cancel">취소</button>
+      <button class="btn danger" id="modal-confirm">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Balance Panel -->
+<button class="admin-toggle" id="admin-toggle">⚙ 밸런스 관리자</button>
+
+<div class="admin-panel" id="admin-panel">
+  <div class="admin-header">
+    <h2>⚙ 밸런스 관리자</h2>
+    <button class="admin-close" id="admin-close">✕ 닫기</button>
+  </div>
+  <div class="admin-tabs">
+    <button class="admin-tab active" data-tab="economy">경제</button>
+    <button class="admin-tab" data-tab="rates">확률</button>
+    <button class="admin-tab" data-tab="items">아이템</button>
+    <button class="admin-tab" data-tab="content">콘텐츠</button>
+  </div>
+  <div class="admin-body">
+    <div class="admin-info-box">
+      <strong>변경 사항은 [적용] 버튼을 눌러야 게임에 반영됩니다.</strong><br>
+      기본값과 다른 값만 localStorage(<code>sword_balance_overrides_v1</code>)에 저장되며, [기본값 복원]으로 모든 설정을 초기화할 수 있습니다.
+    </div>
+
+    <!-- TAB: ECONOMY -->
+    <div class="admin-tabpanel active" id="admin-tab-economy">
+      <div class="admin-section">
+        <h3>기본 경제</h3>
+        <div class="admin-row"><label>시작 골드</label><input type="number" id="ad-startGold" step="1000"><span class="unit">G</span></div>
+      </div>
+      <div class="admin-section">
+        <h3>강화 비용 공식</h3>
+        <div class="desc">cost(level) = round((level+1)<sup>지수</sup>) × 베이스 × 배율</div>
+        <div class="admin-row"><label>베이스</label><input type="number" id="ad-costBase" step="1"><span class="unit">G</span></div>
+        <div class="admin-row"><label>지수</label><input type="number" id="ad-costExp" step="0.05"><span class="unit"></span></div>
+        <div class="admin-row"><label>배율</label><input type="number" id="ad-costMult" step="0.5"><span class="unit">×</span></div>
+      </div>
+      <div class="admin-section">
+        <h3>판매 가격 공식</h3>
+        <div class="desc">sell(level) = anchor × ratio<sup>(level - anchorLvl)</sup> 후 2 유효숫자로 반올림</div>
+        <div class="admin-row"><label>기준 레벨</label><input type="number" id="ad-sellAnchorLvl" step="1" min="0" max="30"><span class="unit"></span></div>
+        <div class="admin-row"><label>기준 가격</label><input type="number" id="ad-sellAnchor" step="1000"><span class="unit">G</span></div>
+        <div class="admin-row"><label>레벨당 비율</label><input type="number" id="ad-sellRatio" step="0.05"><span class="unit">×</span></div>
+      </div>
+      <div class="admin-section">
+        <h3>상점 가격</h3>
+        <div class="admin-row"><label>강화석 1개</label><input type="number" id="ad-shopStone" step="1000"><span class="unit">G</span></div>
+        <div class="admin-row"><label>보호석 1개</label><input type="number" id="ad-shopProtect1" step="10000"><span class="unit">G</span></div>
+        <div class="admin-row"><label>보호석 10개</label><input type="number" id="ad-shopProtect10" step="100000"><span class="unit">G</span></div>
+      </div>
+    </div>
+
+    <!-- TAB: RATES -->
+    <div class="admin-tabpanel" id="admin-tab-rates">
+      <div class="admin-section">
+        <h3>강화 성공률 (각 단계 → 다음 단계)</h3>
+        <div class="desc">+0 → +1 부터 +29 → +30 까지 30개 값. 단위: %</div>
+        <div class="admin-rates-grid" id="ad-rates-grid"></div>
+      </div>
+      <div class="admin-section">
+        <h3>실패 결과 확률 (구간별)</h3>
+        <div class="desc">실패 시 결과: 유지 / 하락 / 파괴 (합 ≤ 1.0). 부족분은 자동 유지로 처리.</div>
+        <div id="ad-failure-rules"></div>
+      </div>
+      <div class="admin-section">
+        <h3>강화 재료 요구</h3>
+        <div class="desc">currentLevel ≥ 시작레벨 일 때, (currentLevel − 오프셋)개의 +currentLevel 검 필요</div>
+        <div class="admin-row"><label>적용 시작 레벨</label><input type="number" id="ad-materialStartLvl" step="1" min="0" max="30"><span class="unit">+</span></div>
+        <div class="admin-row"><label>오프셋</label><input type="number" id="ad-materialOffset" step="1" min="0"><span class="unit"></span></div>
+      </div>
+    </div>
+
+    <!-- TAB: ITEMS -->
+    <div class="admin-tabpanel" id="admin-tab-items">
+      <div class="admin-section">
+        <h3>아이템 효과</h3>
+        <div class="admin-row"><label>검 조각 보너스</label><input type="number" id="ad-fragmentBonus" step="1" min="0"><span class="unit">%</span></div>
+        <div class="admin-row"><label>강화석 1개당 보너스</label><input type="number" id="ad-stoneBonusEach" step="1" min="0"><span class="unit">%</span></div>
+        <div class="admin-row"><label>강화석 최대 동시 사용</label><input type="number" id="ad-stoneMaxStack" step="1" min="1" max="20"><span class="unit">개</span></div>
+      </div>
+      <div class="admin-section">
+        <h3>실패 보상</h3>
+        <div class="admin-row"><label>파괴 시 골드 환급률</label><input type="number" id="ad-destroyRefundRate" step="0.05" min="0" max="1"><span class="unit">×</span></div>
+        <div class="admin-row"><label>파괴 시 검조각 최소</label><input type="number" id="ad-fragmentDropMin" step="1" min="0"><span class="unit">개</span></div>
+        <div class="admin-row"><label>파괴 시 검조각 최대</label><input type="number" id="ad-fragmentDropMax" step="1" min="0"><span class="unit">개</span></div>
+      </div>
+
+      <div class="admin-section">
+        <h3>자원 (티어 0 — 철)</h3>
+        <div class="desc">+0 → +1 시도 시 철이 차감됩니다. 새 게임 시작 시 지급되는 철의 양도 조정 가능.</div>
+        <div class="admin-row"><label>시작 철 지급량</label><input type="number" id="ad-startingIron" step="10" min="0"><span class="unit">개</span></div>
+        <div class="admin-row"><label>+0 시도 당 철 비용</label><input type="number" id="ad-startIronCost" step="1" min="0"><span class="unit">개</span></div>
+      </div>
+
+      <div class="admin-section">
+        <h3>티어 소환 비용</h3>
+        <div class="desc">자원 cost = base × 2<sup>(level - tierMin)</sup>. base 1 일 때 티어 내 비용은 1, 2, 4, 8, 16. base 2 면 두 배.</div>
+        <div class="admin-row"><label>소환 base 비용</label><input type="number" id="ad-summonBaseCost" step="1" min="1"><span class="unit">×</span></div>
+      </div>
+    </div>
+
+    <!-- TAB: CONTENT -->
+    <div class="admin-tabpanel" id="admin-tab-content">
+      <div class="admin-section">
+        <h3>티어 정보 (6개 티어)</h3>
+        <div class="desc">티어 0: +0~+4, 티어 1: +5~+9, ... 티어 5: +25~+30</div>
+        <div id="ad-tiers"></div>
+      </div>
+      <div class="admin-section">
+        <h3>티어 lore (마우스 오버 툴팁)</h3>
+        <div id="ad-lores"></div>
+      </div>
+
+      <div class="admin-section">
+        <h3>티어 자원 이름 (6개)</h3>
+        <div class="desc">티어 별 자원 표시명. 던전 보상 / 자원 표시에 사용됩니다.</div>
+        <div id="ad-resnames"></div>
+      </div>
+      <div class="admin-section">
+        <h3>검 이름 (31개, +0 ~ +30)</h3>
+        <div class="admin-names-grid" id="ad-names"></div>
+      </div>
+    </div>
+  </div>
+  <div class="admin-footer">
+    <button class="admin-btn danger" id="ad-reset">기본값 복원</button>
+    <button class="admin-btn" id="ad-export">Export</button>
+    <button class="admin-btn" id="ad-import">Import</button>
+    <button class="admin-btn apply admin-btn-apply" id="ad-apply">▶ 적용</button>
+  </div>
+</div>
+
+<input type="file" id="ad-import-file" accept=".json,application/json" style="display:none;">
+
+<!-- Debug / Player Manager -->
+<button class="debug-toggle" id="debug-toggle">🛠 디버그 관리자</button>
+
+<div class="debug-panel" id="debug-panel">
+  <div class="debug-header">
+    <h2>🛠 디버그 / 플레이어 관리자</h2>
+    <button class="debug-close" id="debug-close">✕ 닫기</button>
+  </div>
+  <div class="debug-tabs">
+    <button class="debug-tab active" data-dtab="player">플레이어</button>
+    <button class="debug-tab" data-dtab="collection">보관함</button>
+    <button class="debug-tab" data-dtab="cheats">치트</button>
+    <button class="debug-tab" data-dtab="data">데이터</button>
+  </div>
+  <div class="debug-body">
+    <div class="debug-info-box">
+      <strong>주의:</strong> 이 패널은 테스트와 디버그 용도입니다. 모든 변경은 즉시 저장되며 되돌릴 수 없습니다. 치트 토글은 새로고침 시 모두 자동 해제됩니다.
+    </div>
+
+    <!-- Player tab -->
+    <div class="debug-tabpanel active" id="debug-tab-player">
+      <div class="debug-section">
+        <h3>현재 상태</h3>
+        <div class="debug-row">
+          <label>강화 레벨 (0~30)</label>
+          <input type="number" id="dbg-level" min="0" max="30">
+          <button class="debug-btn small" data-daction="set-level">설정</button>
+        </div>
+        <div class="debug-row">
+          <label>골드</label>
+          <input type="number" id="dbg-gold" min="0" step="1000">
+          <button class="debug-btn small" data-daction="set-gold">설정</button>
+        </div>
+        <div class="debug-row">
+          <label>검 조각</label>
+          <input type="number" id="dbg-fragments" min="0" max="999">
+          <button class="debug-btn small" data-daction="set-fragments">설정</button>
+        </div>
+        <div class="debug-row">
+          <label>강화석</label>
+          <input type="number" id="dbg-stones" min="0" max="999">
+          <button class="debug-btn small" data-daction="set-stones">설정</button>
+        </div>
+        <div class="debug-row">
+          <label>보호석</label>
+          <input type="number" id="dbg-protections" min="0" max="999">
+          <button class="debug-btn small" data-daction="set-protections">설정</button>
+        </div>
+      </div>
+
+      <div class="debug-section">
+        <h3>자원 (티어별)</h3>
+        <div class="debug-row">
+          <label style="color:#cdd5e0;">철 (Tier 0)</label>
+          <input type="number" id="dbg-res-iron" min="0">
+          <button class="debug-btn small" data-daction="set-res-iron">설정</button>
+        </div>
+        <div class="debug-row">
+          <label style="color:#9bd4ff;">강철 (Tier 1)</label>
+          <input type="number" id="dbg-res-steel" min="0">
+          <button class="debug-btn small" data-daction="set-res-steel">설정</button>
+        </div>
+        <div class="debug-row">
+          <label style="color:#4d6dff;">신비석 (Tier 2)</label>
+          <input type="number" id="dbg-res-mystic" min="0">
+          <button class="debug-btn small" data-daction="set-res-mystic">설정</button>
+        </div>
+        <div class="debug-row">
+          <label style="color:#c060ff;">수정 (Tier 3)</label>
+          <input type="number" id="dbg-res-crystal" min="0">
+          <button class="debug-btn small" data-daction="set-res-crystal">설정</button>
+        </div>
+        <div class="debug-row">
+          <label style="color:#ff5060;">화염석 (Tier 4)</label>
+          <input type="number" id="dbg-res-inferno" min="0">
+          <button class="debug-btn small" data-daction="set-res-inferno">설정</button>
+        </div>
+        <div class="debug-row">
+          <label style="color:#ffd700;">전설석 (Tier 5)</label>
+          <input type="number" id="dbg-res-legendary" min="0">
+          <button class="debug-btn small" data-daction="set-res-legendary">설정</button>
+        </div>
+        <div class="debug-grid-2">
+          <button class="debug-btn" data-daction="res-100-each">각 100개씩</button>
+          <button class="debug-btn" data-daction="res-zero">모두 0</button>
+        </div>
+      </div>
+
+      <div class="debug-section">
+        <h3>레벨 빠른 액션</h3>
+        <div class="desc">레벨 변경 시 해당 레벨까지 자동 해금</div>
+        <div class="debug-grid-3">
+          <button class="debug-btn" data-daction="level-up">+1 레벨</button>
+          <button class="debug-btn" data-daction="level-down">-1 레벨</button>
+          <button class="debug-btn" data-daction="level-zero">+0</button>
+          <button class="debug-btn" data-daction="level-10">+10</button>
+          <button class="debug-btn" data-daction="level-20">+20</button>
+          <button class="debug-btn" data-daction="level-max">+30</button>
+        </div>
+      </div>
+
+      <div class="debug-section">
+        <h3>골드 빠른 액션</h3>
+        <div class="debug-grid-3">
+          <button class="debug-btn" data-daction="gold-1m">+1M G</button>
+          <button class="debug-btn" data-daction="gold-100m">+100M G</button>
+          <button class="debug-btn" data-daction="gold-1b">+1B G</button>
+          <button class="debug-btn" data-daction="gold-zero">골드 0</button>
+          <button class="debug-btn" data-daction="items-100">아이템 100개씩</button>
+          <button class="debug-btn" data-daction="items-zero">아이템 0</button>
+        </div>
+      </div>
+
+      <div class="debug-section">
+        <h3>통계 / 로그</h3>
+        <div class="debug-grid-2">
+          <button class="debug-btn" data-daction="reset-stats">통계 리셋</button>
+          <button class="debug-btn" data-daction="clear-log">로그 청소</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collection tab -->
+    <div class="debug-tabpanel" id="debug-tab-collection">
+      <div class="debug-section">
+        <h3>일괄 조작</h3>
+        <div class="debug-row">
+          <label>모든 단계에 N개씩 부여</label>
+          <input type="number" id="dbg-fill-amount" min="0" max="999" value="5">
+          <button class="debug-btn small" data-daction="fill-collection">부여</button>
+        </div>
+        <div class="debug-grid-2">
+          <button class="debug-btn" data-daction="unlock-all">모두 해금</button>
+          <button class="debug-btn" data-daction="lock-all">+0 외 잠금</button>
+          <button class="debug-btn" data-daction="give-50-each">단계별 50개씩</button>
+          <button class="debug-btn danger" data-daction="clear-collection">보관함 비우기</button>
+        </div>
+      </div>
+
+      <div class="debug-section">
+        <h3>개별 편집 (수량 / 해금)</h3>
+        <div class="desc">+0은 항상 해금/보관 0으로 고정</div>
+        <div id="dbg-collection-list"></div>
+        <button class="debug-btn" data-daction="apply-collection-edits" style="width:100%; margin-top:8px;">변경 사항 저장</button>
+      </div>
+    </div>
+
+    <!-- Cheats tab -->
+    <div class="debug-tabpanel" id="debug-tab-cheats">
+      <div class="debug-section">
+        <h3>다음 강화 결과 강제 (1회)</h3>
+        <div class="desc">[강화하기] 버튼을 다음 1회 누를 때만 적용. 사용 후 자동 해제.</div>
+        <div class="debug-cheat-current" id="dbg-cheat-current">현재: 자동</div>
+        <div class="debug-grid-3">
+          <button class="debug-btn" data-daction="cheat-success">강제 성공</button>
+          <button class="debug-btn" data-daction="cheat-maintain">강제 유지</button>
+          <button class="debug-btn" data-daction="cheat-downgrade">강제 하락</button>
+          <button class="debug-btn" data-daction="cheat-destroy">강제 파괴</button>
+          <button class="debug-btn" data-daction="cheat-clear">해제</button>
+        </div>
+      </div>
+
+      <div class="debug-section">
+        <h3>무한 모드 (세션 내 유지)</h3>
+        <div class="desc">활성 시 해당 자원이 강화/구매 시 차감되지 않음. 새로고침 시 모두 해제.</div>
+        <div class="debug-toggle-row">
+          <label>무한 골드 (강화/구매 시 차감 없음)</label>
+          <input type="checkbox" id="dbg-cheat-gold">
+        </div>
+        <div class="debug-toggle-row">
+          <label>무한 아이템 (검조각/강화석/보호석)</label>
+          <input type="checkbox" id="dbg-cheat-items">
+        </div>
+        <div class="debug-toggle-row">
+          <label>무한 재료 (보관함 차감 없음)</label>
+          <input type="checkbox" id="dbg-cheat-materials">
+        </div>
+      </div>
+    </div>
+
+    <!-- Data tab -->
+    <div class="debug-tabpanel" id="debug-tab-data">
+      <div class="debug-section">
+        <h3>저장 정보</h3>
+        <div class="debug-row"><label>게임 저장 키</label><span class="debug-code">sword_enhancement_save_v4</span></div>
+        <div class="debug-row"><label>밸런스 키</label><span class="debug-code">sword_balance_overrides_v1</span></div>
+        <div class="debug-row"><label>현재 저장 크기</label><span id="dbg-save-size" class="debug-code">—</span></div>
+      </div>
+
+      <div class="debug-section">
+        <h3>저장 데이터 Export / Import</h3>
+        <div class="debug-grid-2">
+          <button class="debug-btn" data-daction="export-save">상태 Export</button>
+          <button class="debug-btn" data-daction="import-save">상태 Import</button>
+        </div>
+      </div>
+
+      <div class="debug-section">
+        <h3>위험 영역</h3>
+        <div class="debug-grid-2">
+          <button class="debug-btn danger" data-daction="wipe-save">게임 진행 삭제</button>
+          <button class="debug-btn danger" data-daction="wipe-all">모든 데이터 삭제</button>
+        </div>
+        <div class="desc" style="margin-top:6px;">
+          <strong style="color:#fca5a5;">게임 진행 삭제</strong> = 진행/통계/보관함 초기화 (밸런스 설정은 유지)<br>
+          <strong style="color:#fca5a5;">모든 데이터 삭제</strong> = 진행 + 밸런스 설정 모두 초기화
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="dbg-import-file" accept=".json,application/json" style="display:none;">
+
+<!-- Forge welcome / selector -->
+<div class="forge-modal-bg" id="forge-welcome-bg">
+  <div class="forge-card">
+    <h2>🔥 대장간 선택 🔥</h2>
+
+    <div class="forge-list-section" id="forge-list-section" style="display:none;">
+      <div class="forge-list-label">저장된 대장간</div>
+      <div class="forge-list" id="forge-list"></div>
+    </div>
+
+    <div class="forge-or" id="forge-or" style="display:none;">또는</div>
+
+    <div class="desc" id="forge-create-desc">새 대장간 이름을 지어주세요.</div>
+    <div class="hint">한글/영문/숫자/공백, 1~16자</div>
+    <div class="migration-notice" id="forge-migration-notice" style="display:none;">
+      <strong>💡 기존 진행 데이터 발견</strong>
+      이름을 정하면 해당 진행 상태가 새 대장간으로 안전하게 이전됩니다.
+    </div>
+    <input type="text" id="forge-welcome-name" maxlength="16" placeholder="예: Baker의 대장간">
+    <div class="err-msg" id="forge-welcome-err"></div>
+    <div class="forge-actions">
+      <button class="forge-btn cancel" id="forge-welcome-close" style="display:none;">닫기</button>
+      <button class="forge-btn" id="forge-welcome-confirm">새 대장간 개설</button>
+    </div>
+  </div>
+</div>
+
+<!-- Forge rename -->
+<div class="forge-modal-bg" id="forge-rename-bg">
+  <div class="forge-card">
+    <h2>🛠 대장간 이름 변경</h2>
+    <div class="desc">현재: <strong id="forge-rename-current" style="color:var(--accent);"></strong></div>
+    <div class="hint">변경 시 진행 상태 그대로 유지됩니다 · 1~16자</div>
+    <input type="text" id="forge-rename-name" maxlength="16">
+    <div class="err-msg" id="forge-rename-err"></div>
+    <div class="forge-actions">
+      <button class="forge-btn cancel" id="forge-rename-cancel">취소</button>
+      <button class="forge-btn" id="forge-rename-confirm">변경</button>
+    </div>
+  </div>
+</div>
+
+<!-- Diablo-style hover tooltip -->
+<div class="dt-tooltip" id="dt-tooltip"></div>
+
+<!-- Collection action modal (take out / sell with quantity) -->
+<div class="modal-bg" id="action-modal-bg">
+  <div class="modal action-modal">
+    <h3 id="action-modal-title">+0 검</h3>
+    <div id="action-modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn" id="action-modal-cancel">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SWORD ENHANCEMENT GAME v4.0
+   ============================================================ */
+
+const MAX_LEVEL = 30;
+const SAVE_KEY_PREFIX = 'sword_enhancement_save_v4__';
+const LEGACY_SAVE_KEY = 'sword_enhancement_save_v4'; // pre-forge data
+const FORGE_KEY = 'sword_enhancement_forge_v1';
+const BALANCE_KEY = 'sword_balance_overrides_v1';
+let SAVE_KEY = ''; // set per-forge after setupForge()
+
+// ============================================================
+//  BALANCE — admin-manageable game parameters
+// ============================================================
+const BALANCE_DEFAULTS = {
+  // Economy
+  startGold: 1000000,
+  costBase: 100,
+  costExp: 1.55,
+  costMult: 1,
+  sellAnchor: 1000000,
+  sellAnchorLvl: 10,
+  sellRatio: 1.5,
+
+  // Shop prices
+  shopStone: 100000,
+  shopProtect1: 2000000,
+  shopProtect10: 15000000,
+
+  // Item effects
+  fragmentBonus: 10,
+  stoneBonusEach: 5,
+  stoneMaxStack: 3,
+
+  // Failure outcomes
+  destroyRefundRate: 0.2,
+  fragmentDropMin: 2,
+  fragmentDropMax: 4,
+
+  // Failure outcome probability rules per range (must sum ≤ 1.0)
+  failureRules: [
+    { maxLevel: 3,  maintain: 1.0, downgrade: 0.0, destroy: 0.0 },
+    { maxLevel: 9,  maintain: 0.7, downgrade: 0.3, destroy: 0.0 },
+    { maxLevel: 99, maintain: 0.5, downgrade: 0.3, destroy: 0.2 }
+  ],
+
+  // Material requirement: applies from level >= materialStartLvl, count = level - materialOffset
+  materialStartLvl: 19,
+  materialOffset: 18,
+
+  // Tier resources (length must equal 6 — one per tier)
+  resourceNames: ['철', '강철', '신비석', '수정', '화염석', '전설석'],
+  startingIron: 100,        // initial iron count
+  startIronCost: 1,         // iron consumed per +0 → +1 attempt
+  summonBaseCost: 1,        // tier-summon base cost (cost = base × 2^sublevel)
+
+  // Dungeons (one entry per tier)
+  dungeons: [
+    { name: '철광산',     durationMs:       20000, successRate: 100, baseRewardGold:      50, baseRewardResource:  1 }, // 20s
+    { name: '강철 채굴장', durationMs:       60000, successRate:  90, baseRewardGold:     200, baseRewardResource:  1 }, // 1m
+    { name: '신비의 동굴', durationMs:      120000, successRate:  80, baseRewardGold:     800, baseRewardResource:  1 }, // 2m
+    { name: '수정 광산',   durationMs:     1800000, successRate:  70, baseRewardGold:    5000, baseRewardResource:  2 }, // 30m
+    { name: '화염 던전',   durationMs:    14400000, successRate:  60, baseRewardGold:   50000, baseRewardResource:  2 }, // 4h
+    { name: '전설 심연',   durationMs:  4320000000, successRate:  50, baseRewardGold: 5000000, baseRewardResource:  5 }  // 50d
+  ],
+  // Tier mismatch adjustments
+  tierMismatchPenalty: 15,
+  tierMismatchBonus: 5,
+  tierMismatchTimeBonus: 10,
+  tierMismatchTimePenalty: 10,
+  // Hero applicants
+  applicantBaseIntervalMs: 30000,
+  applicantMaxPerSword: 10,
+  applicantMaxTotal: 100,
+
+  // Per-level success rates (length must equal MAX_LEVEL = 30)
+  successRates: [
+    100, 95, 90, 85, 78, 70, 60, 50, 42, 35,
+    28, 23, 19, 15, 12, 10,  8,  6, 4.5, 3.5,
+    2.7, 2.0, 1.5, 1.1, 0.8, 0.6, 0.4, 0.25, 0.15, 0.08
+  ],
+
+  // Content (length must equal MAX_LEVEL+1 = 31)
+  swordNames: [
+    '평범한 철검', '단련된 철검', '예리한 철검', '빛나는 철검', '정교한 철검',
+    '강철검', '단단한 강철검', '명장의 강철검', '군주의 강철검', '최상급 강철검',
+    '신비한 검', '룬이 새겨진 검', '마법사의 검', '정령의 검', '드루이드의 검',
+    '수정 검', '빙결의 수정검', '영혼의 수정검', '심연의 수정검', '어둠의 수정검',
+    '화염검', '용염의 검', '작열의 검', '불멸의 화염검', '멸세의 화염검',
+    '전설의 검', '천상의 검', '신성의 검', '창조의 검', '영원의 검', '천공의 패검'
+  ],
+  tierNames: ['Iron', 'Steel', 'Mystic', 'Crystal', 'Inferno', 'Legendary'],
+  tierColors: ['#cdd5e0', '#9bd4ff', '#4d6dff', '#c060ff', '#ff5060', '#ffd700'],
+  tierLore: [
+    '마을 대장간에서 단조한 평범한 검. 견습공이 처음 휘둘러보는 무기.',
+    '정련된 강철로 빚어진 견고한 검. 정규 기사단의 표준 무장.',
+    '마법의 룬이 새겨진 신비로운 검. 마탑의 고서에 기록된 자취.',
+    '수정 핵심에서 빛이 흘러나오는 검. 정령의 가호가 깃들었다.',
+    '타오르는 화염을 머금은 검. 휘두를 때마다 대지가 진동한다.',
+    '전설로 전해지는 신화의 검. 그 진가를 본 자는 살아남지 못했다.'
+  ]
+};
+
+function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
+
+function loadBalance() {
+  try {
+    const raw = localStorage.getItem(BALANCE_KEY);
+    if (!raw) return deepClone(BALANCE_DEFAULTS);
+    const overrides = JSON.parse(raw);
+    return Object.assign(deepClone(BALANCE_DEFAULTS), overrides);
+  } catch (e) {
+    console.warn('Balance load failed', e);
+    return deepClone(BALANCE_DEFAULTS);
+  }
+}
+
+function saveBalance() {
+  // Persist only the values that differ from defaults
+  const overrides = {};
+  for (const k in balance) {
+    if (JSON.stringify(balance[k]) !== JSON.stringify(BALANCE_DEFAULTS[k])) {
+      overrides[k] = balance[k];
+    }
+  }
+  if (Object.keys(overrides).length === 0) {
+    localStorage.removeItem(BALANCE_KEY);
+  } else {
+    localStorage.setItem(BALANCE_KEY, JSON.stringify(overrides));
+  }
+}
+
+function resetBalance() {
+  balance = deepClone(BALANCE_DEFAULTS);
+  localStorage.removeItem(BALANCE_KEY);
+  applyBalance();
+}
+
+let balance = loadBalance();
+
+// Mutable aliases — kept in sync with balance.* via applyBalance()
+let SUCCESS_RATES = balance.successRates;
+let SWORD_NAMES = balance.swordNames;
+let TIER_TIER_NAMES = balance.tierNames;
+let TIER_COLORS = balance.tierColors;
+let TIER_LORE = balance.tierLore;
+let SHOP_PRICE_STONE = balance.shopStone;
+let SHOP_PRICE_PROTECT_1 = balance.shopProtect1;
+let SHOP_PRICE_PROTECT_10 = balance.shopProtect10;
+
+function applyBalance() {
+  SUCCESS_RATES = balance.successRates;
+  SWORD_NAMES = balance.swordNames;
+  TIER_TIER_NAMES = balance.tierNames;
+  TIER_COLORS = balance.tierColors;
+  TIER_LORE = balance.tierLore;
+  SHOP_PRICE_STONE = balance.shopStone;
+  SHOP_PRICE_PROTECT_1 = balance.shopProtect1;
+  SHOP_PRICE_PROTECT_10 = balance.shopProtect10;
+  saveBalance();
+  if (typeof render === 'function') render();
+}
+
+// ============================================================
+//  CHEATS — debug-only, session-scoped (not persisted)
+// ============================================================
+const cheats = {
+  forceNext: null,            // null | 'success' | 'maintain' | 'downgrade' | 'destroy'
+  infiniteGold: false,        // gold not deducted on enhance/shop
+  infiniteItems: false,       // fragment/stone/protect not consumed
+  infiniteMaterials: false    // collection material not consumed at +20+
+};
+
+// ============================================================
+//  FORGE — single per-device blacksmith with name-based namespace
+// ============================================================
+let forge = loadForge();
+
+function loadForge() {
+  try {
+    const raw = localStorage.getItem(FORGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.name === 'string' && parsed.name.length > 0) {
+      return parsed;
+    }
+    return null;
+  } catch (e) { return null; }
+}
+
+function saveForge() {
+  if (forge && forge.name) {
+    localStorage.setItem(FORGE_KEY, JSON.stringify(forge));
+  }
+}
+
+function validateForgeName(raw) {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return null;
+  if (trimmed.length > 16) return null;
+  // disallow control chars
+  // Strip control chars and any blank-only input
+  const cleaned = trimmed.split('').filter(function(ch) {
+    var c = ch.charCodeAt(0);
+    return c >= 0x20 && c !== 0x7f;
+  }).join('').trim();
+  if (cleaned.length === 0) return null;
+  if (cleaned.length > 16) return null;
+  return cleaned;
+}
+
+// Either initial setup (forge was null) or rename (forge.name changes)
+// Handles legacy data migration on first-time setup
+function setupForge(rawName) {
+  const name = validateForgeName(rawName);
+  if (!name) return false;
+
+  const oldForge = forge;
+  const newKey = SAVE_KEY_PREFIX + name;
+
+  if (!oldForge) {
+    // First-time: migrate legacy un-namespaced data if it exists and target is empty
+    if (!localStorage.getItem(newKey)) {
+      const legacy = localStorage.getItem(LEGACY_SAVE_KEY);
+      if (legacy) {
+        localStorage.setItem(newKey, legacy);
+        localStorage.removeItem(LEGACY_SAVE_KEY);
+      }
+    }
+  } else if (oldForge.name !== name) {
+    // Rename: move data from old key to new key
+    const oldKey = SAVE_KEY_PREFIX + oldForge.name;
+    const oldData = localStorage.getItem(oldKey);
+    if (oldData) {
+      localStorage.setItem(newKey, oldData);
+      localStorage.removeItem(oldKey);
+    }
+  }
+
+  forge = {
+    name: name,
+    createdAt: oldForge?.createdAt || Date.now(),
+    renamedAt: Date.now()
+  };
+  saveForge();
+  SAVE_KEY = newKey;
+  return true;
+}
+
+function getTier(level) {
+  if (level <= 4) return 0;
+  if (level <= 9) return 1;
+  if (level <= 14) return 2;
+  if (level <= 19) return 3;
+  if (level <= 24) return 4;
+  return 5;
+}
+function getSubLevel(level) {
+  return level - [0, 5, 10, 15, 20, 25][getTier(level)];
+}
+
+// Clean-round to 2 significant digits, with 100 G as the smallest unit
+function cleanRound(n) {
+  if (n <= 0) return 0;
+  if (n < 100) return 100;
+  const log = Math.floor(Math.log10(n));
+  const factor = Math.pow(10, Math.max(2, log - 1));
+  return Math.round(n / factor) * factor;
+}
+
+// Cost: snapped to costBase G units
+function getCost(level) {
+  return Math.round(Math.pow(level + 1, balance.costExp)) * balance.costBase * balance.costMult;
+}
+
+// Sell: anchored at sellAnchorLvl = sellAnchor, ratio per level, cleaned to 2 sig figs
+// +0 returns 0 (not sellable) to prevent the no-progress sell loop
+function getSellPrice(level) {
+  if (level <= 0) return 0;
+  return cleanRound(balance.sellAnchor * Math.pow(balance.sellRatio, level - balance.sellAnchorLvl));
+}
+
+// Material requirement: from materialStartLvl onwards
+// At currentLevel L, attempt requires (L - materialOffset) pieces of +L sword
+function getMaterialReq(currentLevel) {
+  if (currentLevel < balance.materialStartLvl) return null;
+  return { level: currentLevel, count: currentLevel - balance.materialOffset };
+}
+
+function rollFailure(level) {
+  for (const rule of balance.failureRules) {
+    if (level <= rule.maxLevel) {
+      const r = Math.random();
+      if (r < rule.maintain) return 'maintain';
+      if (r < rule.maintain + rule.downgrade) return 'downgrade';
+      return 'destroy';
+    }
+  }
+  return 'maintain';
+}
+
+function defaultState() {
+  return {
+    level: 0,
+    gold: balance.startGold,
+    fragments: 0,
+    stones: 0,
+    protections: 0,
+    useFragment: false,
+    useStones: 0,
+    useProtection: false,
+    soundOn: true,
+    collection: new Array(31).fill(0),
+    unlocked: new Array(31).fill(false).map((_, i) => i === 0),
+    resources: {
+      iron: balance.startingIron,
+      steel: 0,
+      mystic: 0,
+      crystal: 0,
+      inferno: 0,
+      legendary: 0
+    },
+    rentals: [],          // active rentals (set by 검 대여소 page)
+    deadSwords: [],       // swords stuck in failed dungeons
+    applicants: [],       // hero applicants (managed by 검 대여소 page)
+    lastApplicantGen: {}, // per-sword-level last generation timestamp
+    dungeonProgress: {
+      0: { unlocked: true,  bestFloor: 0 },
+      1: { unlocked: false, bestFloor: 0 },
+      2: { unlocked: false, bestFloor: 0 },
+      3: { unlocked: false, bestFloor: 0 },
+      4: { unlocked: false, bestFloor: 0 },
+      5: { unlocked: false, bestFloor: 0 }
+    },
+    stats: {
+      attempts: 0,
+      success: 0,
+      fail: 0,
+      broken: 0,
+      sold: 0,
+      stored: 0,
+      best: 0,
+      goldSpent: 0,
+      goldEarned: 0,
+      rentalsStarted: 0,
+      rentalsSucceeded: 0,
+      rentalsFailed: 0
+    },
+    log: []
+  };
+}
+
+// state is initialized as defaultState() until bootGame() runs after forge setup
+let state = defaultState();
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    const def = defaultState();
+    const merged = Object.assign({}, def, parsed, {
+      stats: Object.assign({}, def.stats, parsed.stats || {}),
+      resources: Object.assign({}, def.resources, parsed.resources || {}),
+      collection: Array.isArray(parsed.collection) && parsed.collection.length === 31
+        ? parsed.collection : def.collection,
+      unlocked: Array.isArray(parsed.unlocked) && parsed.unlocked.length === 31
+        ? parsed.unlocked : def.unlocked,
+      rentals: Array.isArray(parsed.rentals) ? parsed.rentals : def.rentals,
+      deadSwords: Array.isArray(parsed.deadSwords) ? parsed.deadSwords : def.deadSwords,
+      applicants: Array.isArray(parsed.applicants) ? parsed.applicants : def.applicants,
+      lastApplicantGen: Object.assign({}, def.lastApplicantGen, parsed.lastApplicantGen || {}),
+      dungeonProgress: Object.assign({}, def.dungeonProgress, parsed.dungeonProgress || {})
+    });
+    merged.unlocked[0] = true;
+    return merged;
+  } catch (e) {
+    console.warn('Load failed', e);
+    return defaultState();
+  }
+}
+
+function saveState() {
+  try {
+    if (SAVE_KEY) {
+      state.lastPlayedAt = Date.now();
+      localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    }
+  } catch (e) {}
+}
+
+// Multi-forge management
+function listForges() {
+  const out = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || key.indexOf(SAVE_KEY_PREFIX) !== 0) continue;
+    const name = key.slice(SAVE_KEY_PREFIX.length);
+    if (!name) continue;
+    try {
+      const data = JSON.parse(localStorage.getItem(key) || 'null');
+      if (!data) continue;
+      out.push({
+        name: name,
+        lastPlayedAt: data.lastPlayedAt || 0,
+        level: data.level || 0,
+        gold: data.gold || 0,
+        bestLevel: (data.stats && data.stats.best) || 0,
+        unlockedCount: ((data.unlocked) || []).filter(Boolean).length,
+        rentalCount: ((data.rentals) || []).length
+      });
+    } catch (e) {
+      out.push({ name: name, lastPlayedAt: 0, level: 0, gold: 0, bestLevel: 0, unlockedCount: 0, rentalCount: 0 });
+    }
+  }
+  out.sort((a, b) => (b.lastPlayedAt || 0) - (a.lastPlayedAt || 0));
+  return out;
+}
+function switchForge(name) {
+  const validName = validateForgeName(name);
+  if (!validName) return false;
+  const key = SAVE_KEY_PREFIX + validName;
+  if (!localStorage.getItem(key)) return false;
+  forge = {
+    name: validName,
+    createdAt: forge && forge.name === validName ? forge.createdAt : Date.now(),
+    renamedAt: forge && forge.name === validName ? forge.renamedAt : Date.now(),
+    lastPlayedAt: Date.now()
+  };
+  saveForge();
+  SAVE_KEY = key;
+  state = loadState();
+  return true;
+}
+function deleteForge(name) {
+  const validName = validateForgeName(name);
+  if (!validName) return false;
+  localStorage.removeItem(SAVE_KEY_PREFIX + validName);
+  if (forge && forge.name === validName) {
+    forge = null;
+    SAVE_KEY = '';
+    localStorage.removeItem(FORGE_KEY);
+  }
+  return true;
+}
+function createForge(rawName) {
+  const name = validateForgeName(rawName);
+  if (!name) return false;
+  const newKey = SAVE_KEY_PREFIX + name;
+  if (localStorage.getItem(newKey)) return switchForge(name);
+  if (!forge) {
+    const legacy = localStorage.getItem(LEGACY_SAVE_KEY);
+    if (legacy) {
+      localStorage.setItem(newKey, legacy);
+      localStorage.removeItem(LEGACY_SAVE_KEY);
+    }
+  }
+  forge = { name, createdAt: Date.now(), renamedAt: Date.now(), lastPlayedAt: Date.now() };
+  saveForge();
+  SAVE_KEY = newKey;
+  state = loadState();
+  saveState();
+  return true;
+}
+function formatRelativeTime(ts) {
+  if (!ts) return '신규';
+  const diff = Date.now() - ts;
+  if (diff < 60000) return '방금';
+  if (diff < 3600000) return Math.floor(diff / 60000) + '분 전';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '시간 전';
+  if (diff < 86400000 * 30) return Math.floor(diff / 86400000) + '일 전';
+  return Math.floor(diff / (86400000 * 30)) + '개월 전';
+}
+
+// ============================================================
+//  AUDIO SYSTEM (Web Audio synthesis)
+// ============================================================
+
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) { return null; }
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playSound(name) {
+  if (!state.soundOn) return;
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  try {
+    switch (name) {
+      case 'anvil': sndAnvil(ctx, t); break;
+      case 'cash': sndCash(ctx, t); break;
+      case 'success': sndSuccess(ctx, t); break;
+      case 'fail': sndFail(ctx, t); break;
+      case 'destroy': sndDestroy(ctx, t); break;
+      case 'store': sndStore(ctx, t); break;
+      case 'protect': sndProtect(ctx, t); break;
+      case 'click': sndClick(ctx, t); break;
+    }
+  } catch (e) { console.warn('Sound error:', e); }
+}
+
+function sndAnvil(ctx, t) {
+  // Forge hammer: low body thud + metallic high ring + impact noise
+  const low = ctx.createOscillator();
+  low.type = 'sine';
+  low.frequency.setValueAtTime(150, t);
+  low.frequency.exponentialRampToValueAtTime(60, t + 0.25);
+  const lg = ctx.createGain();
+  lg.gain.setValueAtTime(0.55, t);
+  lg.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  low.connect(lg).connect(ctx.destination);
+  low.start(t); low.stop(t + 0.3);
+
+  // Metallic ring (the *ping*)
+  const ring = ctx.createOscillator();
+  ring.type = 'triangle';
+  ring.frequency.setValueAtTime(2100, t + 0.005);
+  ring.frequency.exponentialRampToValueAtTime(1200, t + 0.5);
+  const rg = ctx.createGain();
+  rg.gain.setValueAtTime(0, t);
+  rg.gain.linearRampToValueAtTime(0.16, t + 0.01);
+  rg.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+  const fil = ctx.createBiquadFilter();
+  fil.type = 'highpass';
+  fil.frequency.value = 800;
+  ring.connect(fil).connect(rg).connect(ctx.destination);
+  ring.start(t); ring.stop(t + 0.6);
+
+  // Sharp impact noise
+  const bufLen = Math.floor(ctx.sampleRate * 0.05);
+  const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufLen, 2);
+  const n = ctx.createBufferSource();
+  n.buffer = buf;
+  const ng = ctx.createGain();
+  ng.gain.value = 0.28;
+  n.connect(ng).connect(ctx.destination);
+  n.start(t);
+
+  // Sizzle/quench (water hiss) trailing the hammer
+  setTimeout(() => {
+    if (!audioCtx) return;
+    const t2 = audioCtx.currentTime;
+    const hissLen = Math.floor(audioCtx.sampleRate * 0.6);
+    const hissBuf = audioCtx.createBuffer(1, hissLen, audioCtx.sampleRate);
+    const hd = hissBuf.getChannelData(0);
+    for (let i = 0; i < hissLen; i++) {
+      const env = Math.sin((i / hissLen) * Math.PI);
+      hd[i] = (Math.random() * 2 - 1) * env * 0.6;
+    }
+    const hn = audioCtx.createBufferSource();
+    hn.buffer = hissBuf;
+    const hg = audioCtx.createGain();
+    hg.gain.value = 0.12;
+    const hf = audioCtx.createBiquadFilter();
+    hf.type = 'highpass';
+    hf.frequency.value = 3000;
+    hn.connect(hf).connect(hg).connect(audioCtx.destination);
+    hn.start(t2);
+  }, 280);
+}
+
+function sndCash(ctx, t) {
+  // Cash register: bell ding + drawer click + slide
+  const freqs = [1318, 1568, 2093]; // E6, G6, C7
+  freqs.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const g = ctx.createGain();
+    const st = t + i * 0.05;
+    g.gain.setValueAtTime(0, st);
+    g.gain.linearRampToValueAtTime(0.2, st + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, st + 0.7);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(st); osc.stop(st + 0.7);
+  });
+
+  // Drawer click
+  const bufLen = Math.floor(ctx.sampleRate * 0.04);
+  const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufLen, 1.5);
+  const n = ctx.createBufferSource();
+  n.buffer = buf;
+  const ng = ctx.createGain();
+  ng.gain.value = 0.2;
+  const f = ctx.createBiquadFilter();
+  f.type = 'lowpass';
+  f.frequency.value = 1800;
+  n.connect(f).connect(ng).connect(ctx.destination);
+  n.start(t);
+
+  // Drawer slide (delayed)
+  setTimeout(() => {
+    if (!audioCtx) return;
+    const t2 = audioCtx.currentTime;
+    const slideLen = Math.floor(audioCtx.sampleRate * 0.25);
+    const slideBuf = audioCtx.createBuffer(1, slideLen, audioCtx.sampleRate);
+    const sd = slideBuf.getChannelData(0);
+    for (let i = 0; i < slideLen; i++) {
+      const env = Math.sin((i / slideLen) * Math.PI);
+      sd[i] = (Math.random() * 2 - 1) * env * 0.5;
+    }
+    const sn = audioCtx.createBufferSource();
+    sn.buffer = slideBuf;
+    const sg = audioCtx.createGain();
+    sg.gain.value = 0.15;
+    const sf = audioCtx.createBiquadFilter();
+    sf.type = 'bandpass';
+    sf.frequency.value = 600;
+    sn.connect(sf).connect(sg).connect(audioCtx.destination);
+    sn.start(t2);
+  }, 100);
+}
+
+function sndSuccess(ctx, t) {
+  // Triumphant ascending arpeggio
+  const notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    const g = ctx.createGain();
+    const st = t + i * 0.07;
+    g.gain.setValueAtTime(0, st);
+    g.gain.linearRampToValueAtTime(0.18, st + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, st + 0.5);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(st); osc.stop(st + 0.5);
+  });
+}
+
+function sndFail(ctx, t) {
+  // Low descending bass thud
+  const osc = ctx.createOscillator();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(220, t);
+  osc.frequency.exponentialRampToValueAtTime(80, t + 0.4);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.32, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(t); osc.stop(t + 0.4);
+}
+
+function sndDestroy(ctx, t) {
+  // Glass shatter + boom
+  const bufLen = Math.floor(ctx.sampleRate * 0.6);
+  const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufLen, 0.7);
+  const n = ctx.createBufferSource();
+  n.buffer = buf;
+  const ng = ctx.createGain();
+  ng.gain.value = 0.45;
+  const fil = ctx.createBiquadFilter();
+  fil.type = 'highpass';
+  fil.frequency.setValueAtTime(2200, t);
+  fil.frequency.exponentialRampToValueAtTime(500, t + 0.55);
+  n.connect(fil).connect(ng).connect(ctx.destination);
+  n.start(t);
+
+  const boom = ctx.createOscillator();
+  boom.type = 'sine';
+  boom.frequency.setValueAtTime(80, t);
+  boom.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+  const bg = ctx.createGain();
+  bg.gain.setValueAtTime(0.55, t);
+  bg.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+  boom.connect(bg).connect(ctx.destination);
+  boom.start(t); boom.stop(t + 0.5);
+}
+
+function sndStore(ctx, t) {
+  // Wooden chest closing: thud + soft chime
+  const thud = ctx.createOscillator();
+  thud.type = 'sine';
+  thud.frequency.setValueAtTime(180, t);
+  thud.frequency.exponentialRampToValueAtTime(80, t + 0.2);
+  const tg = ctx.createGain();
+  tg.gain.setValueAtTime(0.3, t);
+  tg.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+  thud.connect(tg).connect(ctx.destination);
+  thud.start(t); thud.stop(t + 0.25);
+
+  const chime = ctx.createOscillator();
+  chime.type = 'sine';
+  chime.frequency.value = 880;
+  const cg = ctx.createGain();
+  cg.gain.setValueAtTime(0, t + 0.05);
+  cg.gain.linearRampToValueAtTime(0.1, t + 0.06);
+  cg.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  chime.connect(cg).connect(ctx.destination);
+  chime.start(t + 0.05); chime.stop(t + 0.4);
+}
+
+function sndProtect(ctx, t) {
+  // Magical shield ping
+  const freqs = [880, 1320];
+  freqs.forEach((f, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = f;
+    const g = ctx.createGain();
+    const st = t + i * 0.04;
+    g.gain.setValueAtTime(0, st);
+    g.gain.linearRampToValueAtTime(0.18, st + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, st + 0.5);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(st); osc.stop(st + 0.5);
+  });
+}
+
+function sndClick(ctx, t) {
+  const osc = ctx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.value = 800;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.1, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(t); osc.stop(t + 0.05);
+}
+
+// ============================================================
+//  SWORD VISUAL SYSTEM
+// ============================================================
+
+const TIER_PATTERNS = {
+  0: [
+    '................','.......BB.......','.......BB.......','......BEEB......',
+    '......BEEB......','......BEEB......','......BEEB......','......BEEB......',
+    '......BEEB......','......BEEB......','......BEEB......','......BEEB......',
+    '......BEEB......','......BEEB......','......BEEB......','......BEEB......',
+    '......BEEB......','......BEEB......','......BEEB......','......BBBB......',
+    '.....gGGGGg.....','....gGGGGGGg....','....gggGGggg....','.....HhhhhH.....',
+    '.....HhhhhH.....','.....HhhhhH.....','.....HhhhhH.....','....HHhhhhHH....',
+    '....HJJJJJJH....','....HJJJJJJH....','.....HJJJJH.....','................'
+  ],
+  1: [
+    '.......BB.......','.......BB.......','......BEEB......','......BEEB......',
+    '......BEEB......','.....BEEEEB.....','.....BEEEEB.....','.....BEEEEB.....',
+    '.....BEEEEB.....','.....BEEEEB.....','.....BEEEEB.....','.....BEEEEB.....',
+    '.....BEEEEB.....','.....BEEEEB.....','.....BEEEEB.....','.....BEEEEB.....',
+    '.....BEEEEB.....','.....BEEEEB.....','.....BEEEEB.....','.....BEEEEB.....',
+    '.....BBEEBB.....','GGGGGGggggGGGGGG','GGGGGGggggGGGGGG','gGGGGggggggGGGGg',
+    '.....HhhhhH.....','.....HhhhhH.....','.....HhhhhH.....','.....HhhhhH.....',
+    '....HHhhhhHH....','....HJJJJJJH....','....HJJJJJJH....','.....HJJJJH.....'
+  ],
+  2: [
+    '.......BB.......','.......BB.......','......BEEB......','......BEEB......',
+    '.....BBEEBB.....','.....BECCEB.....','.....BECCEB.....','.....BECCEB.....',
+    '.....BECCEB.....','.....BECCEB.....','.....BECCEB.....','.....BECCEB.....',
+    '.....BECCEB.....','.....BECCEB.....','.....BECCEB.....','.....BECCEB.....',
+    '.....BECCEB.....','.....BECCEB.....','.....BECCEB.....','.....BEEEEB.....',
+    '.....BBEEBB.....','GGGGGOggggOGGGGG','GGGGOOggggOOGGGG','gGGggggggggggGGg',
+    '.....HhhhhH.....','.....HhhhhH.....','.....HhhhhH.....','....HHhhhhHH....',
+    '....HJJJJJJH....','...HJjJJJJjJH...','....HJJJJJJH....','.....HJJJJH.....'
+  ],
+  3: [
+    '.......BB.......','......BEEB......','......BEEB......','.....BEEEEB.....',
+    '....BEEEEEEB....','....BECCCCEB....','....BECCCCEB....','....BECCCCEB....',
+    '....BECCCCEB....','....BECCCCEB....','....BECCCCEB....','....BECCCCEB....',
+    '....BECCCCEB....','....BECCCCEB....','....BECCCCEB....','....BECCCCEB....',
+    '....BECCCCEB....','....BECCCCEB....','....BECCCCEB....','....BBEEEEBB....',
+    '....BBBBBBBB....','GGGGOOggggOOGGGG','gGGOggggggggOGGg','gGGggggggggggGGg',
+    '.....HhhhhH.....','.....HhhhhH.....','.....HhhhhH.....','....HHhhhhHH....',
+    '...HJjJJJJjJH...','...HjJJJJJJjH...','...HJjJJJJjJH...','....HJJJJJJH....'
+  ],
+  4: [
+    '.......BB.......','......BEEB......','.....BEEEEB.....','....BBEEEEBB....',
+    '....BEEEEEEB....','....BECCCCEB....','....BECCCCEB....','...BBECCCCEBB...',
+    '...BEECCCCEEB...','....BECCCCEB....','....BECCCCEB....','...BBECCCCEBB...',
+    '...BEECCCCEEB...','....BECCCCEB....','....BECCCCEB....','....BECCCCEB....',
+    '....BECCCCEB....','....BECCCCEB....','....BECCCCEB....','....BECCCCEB....',
+    '....BBEEEEBB....','gGGOOggggggOOGGg','gGOOggggggggOOGg','GGggggggggggggGG',
+    '.....HhhhhH.....','.....HhhhhH.....','.....HhhhhH.....','....HHhhhhHH....',
+    '...HJjJJJJjJH...','...HjJJJJJJjH...','...HJjJJJJjJH...','....HJJJJJJH....'
+  ],
+  5: [
+    '.......BB.......','......BEEB......','.....BEEEEB.....','....BEEEEEEB....',
+    '...BBEEEEEEBB...','...BEECCCCEEB...','...BEECCCCEEB...','...BEECCCCEEB...',
+    '..BBEECCCCEEBB..','..BEEECCCCEEEB..','...BEECCCCEEB...','..BBEECCCCEEBB..',
+    '..BEEECCCCEEEB..','...BEECCCCEEB...','...BEECCCCEEB...','...BEECCCCEEB...',
+    '...BEECCCCEEB...','...BEECCCCEEB...','...BEECCCCEEB...','...BEECCCCEEB...',
+    '...BBEEEEEEBB...','gGOOggggggggOOGg','GOOgggggggggggOO','gGggggggggggggGg',
+    '.....HhhhhH.....','.....HhhhhH.....','....HHhhhhHH....','...HHhhhhhhHH...',
+    '..HJjjJJJJjjJH..','..HjJJJJJJJJjH..','..HJjjJJJJjjJH..','...HJJJJJJJJH...'
+  ]
+};
+
+const TIER_DECOR = {
+  0: [[],[[7,28,'j']],[[7,28,'j'],[8,28,'j']],[[7,28,'j'],[8,28,'j'],[7,14,'r']],[[7,28,'j'],[8,28,'j'],[7,14,'r'],[8,14,'r']]],
+  1: [[],[[7,13,'r']],[[7,13,'r'],[8,13,'r']],[[7,13,'r'],[8,13,'r'],[7,17,'r']],[[7,13,'r'],[8,13,'r'],[7,17,'r'],[8,17,'r']]],
+  2: [[],[[7,9,'r']],[[7,9,'r'],[8,9,'r']],[[7,9,'r'],[8,9,'r'],[7,14,'r']],[[7,9,'r'],[8,9,'r'],[7,14,'r'],[8,14,'r']]],
+  3: [[],[[6,10,'r'],[9,10,'r']],[[6,10,'r'],[9,10,'r'],[6,15,'r'],[9,15,'r']],[[6,10,'r'],[9,10,'r'],[6,15,'r'],[9,15,'r'],[7,13,'j']],[[6,10,'r'],[9,10,'r'],[6,15,'r'],[9,15,'r'],[7,13,'j'],[8,13,'j']]],
+  4: [[],[[7,6,'r'],[8,6,'r']],[[7,6,'r'],[8,6,'r'],[7,17,'r'],[8,17,'r']],[[7,6,'r'],[8,6,'r'],[7,17,'r'],[8,17,'r'],[7,10,'s']],[[7,6,'r'],[8,6,'r'],[7,17,'r'],[8,17,'r'],[7,10,'s'],[8,10,'s']]],
+  5: [[],[[7,7,'s']],[[6,7,'s'],[9,7,'s']],[[6,7,'s'],[9,7,'s'],[6,14,'s'],[9,14,'s']],[[6,7,'s'],[9,7,'s'],[6,14,'s'],[9,14,'s'],[6,17,'s'],[9,17,'s']],[[6,7,'s'],[9,7,'s'],[6,14,'s'],[9,14,'s'],[6,17,'s'],[9,17,'s'],[7,11,'s'],[8,11,'s']]]
+};
+
+const PALETTE_KEYFRAMES = [
+  { l: 0,  base:'#9aa4b2', edge:'#cdd5e0', dark:'#5a6270', core:'#7f8a99', guard:'#7c5b2e', guardDark:'#4a3517', ornament:'#bfb6a0', handle:'#3b2a1a', handleDark:'#221408', jewel:'#a8a8b0', jewelHi:'#d4d4dc', rune:'#5a6270', star:'#ffffff', glowR:155, glowG:164, glowB:178, glowA: 0.0 },
+  { l: 5,  base:'#a8c0d8', edge:'#dceaf6', dark:'#506680', core:'#7f9bb8', guard:'#a07a40', guardDark:'#604824', ornament:'#9bd4ff', handle:'#3b2a1a', handleDark:'#221408', jewel:'#9bd4ff', jewelHi:'#d0eaff', rune:'#3a5078', star:'#ffffff', glowR:155, glowG:212, glowB:255, glowA: 0.30 },
+  { l: 10, base:'#5070d0', edge:'#a0b8e8', dark:'#202a60', core:'#3050b0', guard:'#cca040', guardDark:'#806020', ornament:'#4d6dff', handle:'#3b2a1a', handleDark:'#221408', jewel:'#4d6dff', jewelHi:'#a0b0ff', rune:'#80b0ff', star:'#ffffff', glowR: 77, glowG:109, glowB:255, glowA: 0.55 },
+  { l: 15, base:'#a040d8', edge:'#d080ff', dark:'#501880', core:'#7028b0', guard:'#d4af37', guardDark:'#806820', ornament:'#c060ff', handle:'#3b2a1a', handleDark:'#221408', jewel:'#c060ff', jewelHi:'#e0a0ff', rune:'#ffd0ff', star:'#ffffff', glowR:192, glowG: 96, glowB:255, glowA: 0.72 },
+  { l: 20, base:'#e02040', edge:'#ff8090', dark:'#600810', core:'#a0102a', guard:'#ffd700', guardDark:'#a08000', ornament:'#ff5060', handle:'#4a1f1f', handleDark:'#2a0a0a', jewel:'#ff5060', jewelHi:'#ffa0b0', rune:'#ffd040', star:'#ffffff', glowR:255, glowG: 32, glowB: 64, glowA: 0.85 },
+  { l: 25, base:'#ff8010', edge:'#ffc060', dark:'#a04000', core:'#d06010', guard:'#fff080', guardDark:'#d4a020', ornament:'#ffaa20', handle:'#4a2010', handleDark:'#2a0a05', jewel:'#ffd040', jewelHi:'#ffffa0', rune:'#ffffff', star:'#ffffff', glowR:255, glowG:128, glowB: 16, glowA: 0.95 },
+  { l: 30, base:'#fff8c0', edge:'#ffffff', dark:'#d4a020', core:'#ffd700', guard:'#ffffff', guardDark:'#ffd700', ornament:'#ff60ff', handle:'#5a2020', handleDark:'#2a0a0a', jewel:'#ff60ff', jewelHi:'#ffffff', rune:'#ffffff', star:'#ffffff', glowR:255, glowG:215, glowB:  0, glowA: 1.00 }
+];
+
+const SILHOUETTE_PALETTE = {
+  base: '#0e0e18', edge: '#181822', dark: '#000', core: '#0e0e18',
+  guard: '#0e0e18', guardDark: '#000', ornament: '#181822',
+  handle: '#0e0e18', handleDark: '#000',
+  jewel: '#181822', jewelHi: '#0e0e18', rune: '#000', star: '#181822',
+  glow: 'transparent', glowR: 0, glowG: 0, glowB: 0, glowA: 0
+};
+
+function lerpHex(c1, c2, t) {
+  const r1 = parseInt(c1.slice(1,3), 16), g1 = parseInt(c1.slice(3,5), 16), b1 = parseInt(c1.slice(5,7), 16);
+  const r2 = parseInt(c2.slice(1,3), 16), g2 = parseInt(c2.slice(3,5), 16), b2 = parseInt(c2.slice(5,7), 16);
+  const r = Math.round(r1 + (r2 - r1) * t);
+  const g = Math.round(g1 + (g2 - g1) * t);
+  const b = Math.round(b1 + (b2 - b1) * t);
+  return '#' + [r,g,b].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+function getSwordPalette(level) {
+  let lo = PALETTE_KEYFRAMES[0], hi = PALETTE_KEYFRAMES[PALETTE_KEYFRAMES.length-1];
+  for (let i = 0; i < PALETTE_KEYFRAMES.length - 1; i++) {
+    if (level >= PALETTE_KEYFRAMES[i].l && level <= PALETTE_KEYFRAMES[i+1].l) {
+      lo = PALETTE_KEYFRAMES[i];
+      hi = PALETTE_KEYFRAMES[i+1];
+      break;
+    }
+  }
+  const t = (hi.l === lo.l) ? 0 : (level - lo.l) / (hi.l - lo.l);
+  const result = {};
+  ['base','edge','dark','core','guard','guardDark','ornament','handle','handleDark','jewel','jewelHi','rune','star'].forEach(k => {
+    result[k] = lerpHex(lo[k], hi[k], t);
+  });
+  const glowR = Math.round(lo.glowR + (hi.glowR - lo.glowR) * t);
+  const glowG = Math.round(lo.glowG + (hi.glowG - lo.glowG) * t);
+  const glowB = Math.round(lo.glowB + (hi.glowB - lo.glowB) * t);
+  const glowA = lo.glowA + (hi.glowA - lo.glowA) * t;
+  result.glow = `rgba(${glowR},${glowG},${glowB},${glowA})`;
+  return result;
+}
+
+function buildSwordSVG(level, options = {}) {
+  const silhouette = !!options.silhouette;
+  const width = options.width || 200;
+  const tier = getTier(level);
+  const sub = getSubLevel(level);
+  const p = silhouette ? SILHOUETTE_PALETTE : getSwordPalette(level);
+  const pattern = TIER_PATTERNS[tier];
+  const decor = TIER_DECOR[tier][sub] || [];
+
+  const grid = pattern.map(r => r.split(''));
+  decor.forEach(([x, y, ch]) => {
+    if (grid[y] && x >= 0 && x < 16) grid[y][x] = ch;
+  });
+
+  const cols = 16, rows = 32, px = 8;
+  const w = cols * px, h = rows * px;
+  let rects = '';
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const ch = grid[y][x];
+      if (!ch || ch === '.') continue;
+      let fill = '#000';
+      switch(ch) {
+        case 'B': fill = p.base; break;
+        case 'E': fill = p.edge; break;
+        case 'C': fill = p.core; break;
+        case 'G': fill = p.guard; break;
+        case 'g': fill = p.guardDark; break;
+        case 'O': fill = p.ornament; break;
+        case 'H': fill = p.handle; break;
+        case 'h': fill = p.handleDark; break;
+        case 'J': fill = p.jewel; break;
+        case 'j': fill = p.jewelHi; break;
+        case 'r': fill = p.rune; break;
+        case 's': fill = p.star; break;
+      }
+      rects += `<rect x="${x*px}" y="${y*px}" width="${px}" height="${px}" fill="${fill}"/>`;
+      if (!silhouette && (ch === 'B' || ch === 'G' || ch === 'H' || ch === 'C')) {
+        rects += `<rect x="${x*px}" y="${y*px+px-1}" width="${px}" height="1" fill="${p.dark}" opacity="0.55"/>`;
+      }
+    }
+  }
+
+  let overlay = '', aura = '', sparkles = '';
+  if (!silhouette) {
+    if (level >= 28) {
+      overlay = `<rect x="0" y="0" width="${w}" height="${h}" fill="url(#rainbow)" opacity="0.30" style="mix-blend-mode:overlay"/>`;
+    }
+    if (level >= 4) {
+      const auraOpacity = Math.min(0.5, 0.05 + level * 0.013);
+      aura = `<circle cx="${w/2}" cy="${h/2}" r="${w*0.65}" fill="${p.glow}" opacity="${auraOpacity}"/>`;
+    }
+    if (level >= 25) {
+      const numStars = 3 + (level - 25) * 2;
+      for (let i = 0; i < numStars; i++) {
+        const sx = 8 + Math.sin(i * 1.7) * 50 + w/2;
+        const sy = 30 + Math.cos(i * 1.3) * 80 + h/2;
+        sparkles += `<rect x="${sx}" y="${sy}" width="3" height="3" fill="${p.star}" opacity="0.8"/>`;
+      }
+    }
+  }
+
+  const aspect = (h + 56) / (w + 24);
+  return `
+    <svg viewBox="-12 -28 ${w+24} ${h+56}" width="${width}" height="${width*aspect}" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="rainbow" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="#ff0080"/>
+          <stop offset="20%" stop-color="#ff8000"/>
+          <stop offset="40%" stop-color="#ffff00"/>
+          <stop offset="60%" stop-color="#00ff80"/>
+          <stop offset="80%" stop-color="#0080ff"/>
+          <stop offset="100%" stop-color="#8000ff"/>
+        </linearGradient>
+      </defs>
+      ${aura}
+      ${rects}
+      ${sparkles}
+      ${overlay}
+    </svg>
+  `;
+}
+
+// ----- Item icons -----
+function buildFragmentSVG() {
+  return `<svg viewBox="0 0 16 16" width="36" height="36" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <rect x="6" y="2" width="2" height="2" fill="#cdd5e0"/><rect x="5" y="4" width="3" height="2" fill="#9aa4b2"/>
+    <rect x="8" y="4" width="2" height="2" fill="#cdd5e0"/><rect x="4" y="6" width="3" height="2" fill="#7f8a99"/>
+    <rect x="7" y="6" width="3" height="2" fill="#9aa4b2"/><rect x="10" y="6" width="2" height="2" fill="#cdd5e0"/>
+    <rect x="3" y="8" width="3" height="2" fill="#5a6270"/><rect x="6" y="8" width="3" height="2" fill="#7f8a99"/>
+    <rect x="9" y="8" width="3" height="2" fill="#9aa4b2"/><rect x="2" y="10" width="3" height="2" fill="#5a6270"/>
+    <rect x="5" y="10" width="3" height="2" fill="#7f8a99"/><rect x="8" y="10" width="3" height="2" fill="#5a6270"/>
+    <rect x="3" y="12" width="3" height="2" fill="#3a4250"/></svg>`;
+}
+
+function buildStoneSVG() {
+  return `<svg viewBox="0 0 16 16" width="36" height="36" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <rect x="6" y="2" width="4" height="2" fill="#e0a0ff"/><rect x="4" y="4" width="2" height="2" fill="#c060ff"/>
+    <rect x="6" y="4" width="4" height="2" fill="#e0a0ff"/><rect x="10" y="4" width="2" height="2" fill="#a040d0"/>
+    <rect x="3" y="6" width="2" height="4" fill="#a040d0"/><rect x="5" y="6" width="6" height="4" fill="#c060ff"/>
+    <rect x="6" y="6" width="2" height="2" fill="#fff"/><rect x="11" y="6" width="2" height="4" fill="#7028a0"/>
+    <rect x="4" y="10" width="2" height="2" fill="#7028a0"/><rect x="6" y="10" width="4" height="2" fill="#a040d0"/>
+    <rect x="10" y="10" width="2" height="2" fill="#502080"/><rect x="6" y="12" width="4" height="2" fill="#502080"/></svg>`;
+}
+
+function buildProtectSVG() {
+  // Shield-shaped gem in cyan/teal
+  return `<svg viewBox="0 0 16 16" width="36" height="36" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <rect x="6" y="1" width="4" height="1" fill="#a7f3d0"/>
+    <rect x="4" y="2" width="8" height="2" fill="#5eead4"/>
+    <rect x="6" y="2" width="2" height="1" fill="#a7f3d0"/>
+    <rect x="3" y="4" width="10" height="2" fill="#2dd4bf"/>
+    <rect x="5" y="4" width="2" height="1" fill="#a7f3d0"/>
+    <rect x="3" y="6" width="10" height="2" fill="#14b8a6"/>
+    <rect x="6" y="6" width="4" height="1" fill="#5eead4"/>
+    <rect x="3" y="8" width="10" height="2" fill="#0d9488"/>
+    <rect x="4" y="10" width="8" height="2" fill="#0f766e"/>
+    <rect x="5" y="12" width="6" height="2" fill="#115e59"/>
+    <rect x="7" y="14" width="2" height="1" fill="#0f766e"/></svg>`;
+}
+
+// ----- DOM refs -----
+const $ = id => document.getElementById(id);
+const swordContainer = $('sword-container');
+const levelBadge = $('level-badge');
+const tierName = $('tier-name');
+const probPct = $('prob-pct');
+const probFill = $('prob-fill');
+const probModifier = $('prob-modifier');
+const costText = $('cost-text');
+const sellText = $('sell-text');
+const enhanceBtn = $('enhance-btn');
+const sellBtn = $('sell-btn');
+const storeBtn = $('store-btn');
+const resetBtn = $('reset-btn');
+const logEl = $('log');
+const toast = $('toast');
+const itemListEl = $('item-list');
+const sparklesEl = $('sparkles');
+const swordStage = $('sword-stage');
+const collectionGrid = $('collection-grid');
+const soundToggle = $('sound-toggle');
+
+let busy = false;
+
+// ----- Render -----
+function render() {
+  swordContainer.innerHTML = buildSwordSVG(state.level);
+  const palette = getSwordPalette(state.level);
+  swordContainer.style.setProperty('--glow', palette.glow);
+
+  levelBadge.textContent = `+${state.level}`;
+  const tier = getTier(state.level);
+  const tierColors = ['#cdd5e0', '#9bd4ff', '#4d6dff', '#c060ff', '#ff5060', '#ffd700'];
+  levelBadge.style.color = tierColors[tier];
+  levelBadge.style.borderColor = tierColors[tier];
+
+  // Forge name display
+  if (forge && forge.name) {
+    $('forge-display').style.display = '';
+    $('forge-name-display').textContent = forge.name;
+  } else {
+    $('forge-display').style.display = 'none';
+  }
+  // Nav info
+  const navForgeEl = $('nav-forge');
+  if (navForgeEl) navForgeEl.textContent = forge ? forge.name : '—';
+  const navActiveEl = $('nav-active');
+  if (navActiveEl) navActiveEl.textContent = (state.rentals || []).length;
+  const displayName = state.unlocked[state.level] ? SWORD_NAMES[state.level] : '???';
+  tierName.textContent = displayName;
+  tierName.style.color = state.unlocked[state.level] ? tierColors[tier] : '#666';
+
+  $('top-gold').textContent = state.gold.toLocaleString();
+  $('top-frag').textContent = state.fragments;
+  $('top-stone').textContent = state.stones;
+  $('top-protect').textContent = state.protections;
+
+  // Resources bar (6 tier resources)
+  const resKeys = ['iron','steel','mystic','crystal','inferno','legendary'];
+  const resBar = $('resources-bar');
+  resBar.innerHTML = resKeys.map((key, t) => `
+    <div class="resource-stat" data-tier="${t}" title="${balance.resourceNames[t]}">
+      <div class="l">${balance.resourceNames[t]}</div>
+      <div class="v" id="top-res-${key}">${(state.resources[key]||0).toLocaleString()}</div>
+    </div>
+  `).join('');
+
+  $('stat-attempts').textContent = state.stats.attempts;
+  $('stat-success').textContent = state.stats.success;
+  $('stat-fail').textContent = state.stats.fail;
+  $('stat-broken').textContent = state.stats.broken;
+  $('stat-sold').textContent = state.stats.sold;
+  $('stat-stored').textContent = state.stats.stored;
+  $('stat-best').textContent = `+${state.stats.best}`;
+  $('stat-gold-spent').textContent = state.stats.goldSpent.toLocaleString();
+  $('stat-gold-earned').textContent = state.stats.goldEarned.toLocaleString();
+
+  // Probability + cost
+  const matReq = getMaterialReq(state.level);
+  const haveMat = matReq ? (state.collection[matReq.level] || 0) : 0;
+  const matSufficient = !matReq || cheats.infiniteMaterials || haveMat >= matReq.count;
+
+  if (state.level >= MAX_LEVEL) {
+    probPct.textContent = 'MAX';
+    probFill.style.width = '100%';
+    probFill.style.background = 'linear-gradient(90deg, #ffd700, #ff60ff)';
+    probModifier.textContent = '';
+    costText.textContent = '— G';
+    enhanceBtn.disabled = true;
+    enhanceBtn.textContent = '최대 강화 달성!';
+  } else {
+    const baseRate = SUCCESS_RATES[state.level];
+    const bonus = computeBonus();
+    const finalRate = Math.min(100, baseRate + bonus);
+    probPct.textContent = finalRate.toFixed(2).replace(/\.?0+$/,'') + '%';
+    probFill.style.width = finalRate + '%';
+    probModifier.textContent = bonus > 0 ? `(기본 ${baseRate}% +${bonus})` : '';
+    const cost = getCost(state.level);
+    let costStr = cost.toLocaleString() + ' G';
+    if (state.level === 0 && balance.startIronCost > 0) {
+      costStr += ` + ${balance.startIronCost} 철`;
+    }
+    costText.textContent = costStr;
+
+    const goldOk = cheats.infiniteGold || state.gold >= cost;
+    // Iron requirement: only at +0 → +1 attempt
+    const ironRequired = state.level === 0 ? balance.startIronCost : 0;
+    const ironOk = cheats.infiniteMaterials || (state.resources?.iron || 0) >= ironRequired;
+    let canEnhance = goldOk && matSufficient && ironOk && !busy;
+    enhanceBtn.disabled = !canEnhance;
+    if (!goldOk) enhanceBtn.textContent = '골드 부족!';
+    else if (!ironOk) enhanceBtn.textContent = `철 부족! (${ironRequired}개 필요)`;
+    else if (!matSufficient) enhanceBtn.textContent = '재료 부족!';
+    else enhanceBtn.textContent = '강화하기';
+  }
+
+  // Material row
+  if (matReq) {
+    $('material-row').style.display = '';
+    $('material-text').innerHTML = `+${matReq.level} 검 ${matReq.count}개 <span style="color:${matSufficient ? 'var(--text-dim)' : 'var(--fail)'}">(보유 ${haveMat})</span>`;
+    $('material-text').style.color = matSufficient ? 'var(--warn)' : 'var(--fail)';
+  } else {
+    $('material-row').style.display = 'none';
+  }
+
+  // Sell + Store buttons
+  const sellPrice = getSellPrice(state.level);
+  if (state.level === 0) {
+    sellText.textContent = '판매 불가';
+    sellText.style.color = 'var(--text-dim)';
+    sellBtn.innerHTML = `검 판매<span class="sub-text">+0 판매 불가</span>`;
+    sellBtn.disabled = true;
+  } else {
+    sellText.textContent = sellPrice.toLocaleString() + ' G';
+    sellText.style.color = 'var(--teal)';
+    sellBtn.innerHTML = `검 판매<span class="sub-text">${sellPrice.toLocaleString()} G</span>`;
+    sellBtn.disabled = busy;
+  }
+  if (state.level === 0) {
+    storeBtn.innerHTML = `검 보관<span class="sub-text">+0 보관 불가</span>`;
+    storeBtn.disabled = true;
+  } else {
+    storeBtn.innerHTML = `검 보관<span class="sub-text">+${state.collection[state.level]} → +${state.collection[state.level]+1}</span>`;
+    storeBtn.disabled = busy;
+  }
+  resetBtn.disabled = busy;
+
+  // Shop buttons
+  $('buy-stone-btn').innerHTML = `<span>강화석 1개 구매</span><span class="price">${SHOP_PRICE_STONE.toLocaleString()} G</span>`;
+  $('buy-stone-btn').disabled = busy || state.gold < SHOP_PRICE_STONE;
+  $('buy-protect1-btn').innerHTML = `<span>보호석 1개 구매</span><span class="price">${SHOP_PRICE_PROTECT_1.toLocaleString()} G</span>`;
+  $('buy-protect1-btn').disabled = busy || state.gold < SHOP_PRICE_PROTECT_1;
+  $('buy-protect10-btn').innerHTML = `<span>보호석 10개 묶음</span><span class="price">${SHOP_PRICE_PROTECT_10.toLocaleString()} G</span>`;
+  $('buy-protect10-btn').disabled = busy || state.gold < SHOP_PRICE_PROTECT_10;
+
+  renderItems();
+  renderSummonPanel();
+  renderCollection(matReq);
+
+  logEl.innerHTML = state.log.slice(-50).reverse().map(e =>
+    `<div class="log-entry ${e.type}">${e.text}</div>`
+  ).join('');
+
+  // Sound toggle button text
+  soundToggle.textContent = state.soundOn ? '🔊 소리 ON' : '🔇 소리 OFF';
+}
+
+function computeBonus() {
+  let b = 0;
+  if (state.useFragment && state.fragments > 0) b += balance.fragmentBonus;
+  b += Math.min(state.stones, state.useStones) * balance.stoneBonusEach;
+  return b;
+}
+
+function renderItems() {
+  const items = [
+    {
+      key: 'fragment',
+      name: '검 조각',
+      desc: `성공률 +${balance.fragmentBonus}%`,
+      icon: buildFragmentSVG(),
+      count: state.fragments,
+      active: state.useFragment,
+      onToggle: () => {
+        if (state.fragments === 0) return;
+        state.useFragment = !state.useFragment;
+        playSound('click');
+        saveState(); render();
+      },
+      btnText: () => state.useFragment ? '사용 중 (취소)' : '사용'
+    },
+    {
+      key: 'stone',
+      name: '강화석',
+      desc: `각 +${balance.stoneBonusEach}% (최대 ${balance.stoneMaxStack}개)`,
+      icon: buildStoneSVG(),
+      count: state.stones,
+      active: state.useStones > 0,
+      onToggle: () => {
+        if (state.stones === 0) return;
+        state.useStones = (state.useStones + 1) % (Math.min(state.stones, balance.stoneMaxStack) + 1);
+        playSound('click');
+        saveState(); render();
+      },
+      btnText: () => {
+        const cur = Math.min(state.stones, state.useStones);
+        return cur > 0 ? `${cur}개 사용 중 (클릭)` : '사용';
+      }
+    },
+    {
+      key: 'protect',
+      name: '보호석',
+      desc: '실패 시 파괴/하락 방지',
+      icon: buildProtectSVG(),
+      count: state.protections,
+      active: state.useProtection,
+      onToggle: () => {
+        if (state.protections === 0) return;
+        state.useProtection = !state.useProtection;
+        playSound('click');
+        saveState(); render();
+      },
+      btnText: () => state.useProtection ? '사용 중 (취소)' : '사용'
+    }
+  ];
+  itemListEl.innerHTML = '';
+  items.forEach(it => {
+    const wrap = document.createElement('div');
+    wrap.className = 'item' + (it.active && it.count > 0 ? ' active' : '');
+    wrap.innerHTML = `
+      <div class="item-icon">${it.icon}</div>
+      <div class="item-info">
+        <div class="name">${it.name} <span class="item-count">x${it.count}</span></div>
+        <div class="desc">${it.desc}</div>
+        <button class="btn item-use-btn" ${it.count === 0 || busy ? 'disabled' : ''}>
+          ${it.btnText()}
+        </button>
+      </div>
+    `;
+    wrap.querySelector('button').onclick = it.onToggle;
+    itemListEl.appendChild(wrap);
+  });
+}
+
+function renderSummonPanel() {
+  const list = $('summon-list');
+  if (!list) return;
+  let html = '';
+  for (let t = 0; t < 6; t++) {
+    const resKey = RESOURCE_KEYS[t];
+    const have = (state.resources && state.resources[resKey]) || 0;
+    const { min: tierMin, max: tierMax } = tierBounds(t);
+    const minCost = getSummonCost(tierMin);
+    const maxCost = getSummonCost(tierMax);
+    const tierColor = TIER_COLORS[t];
+    const enough = cheats.infiniteMaterials || have >= minCost;
+    const disabled = enough && !busy ? '' : 'disabled';
+    html += `
+      <div class="summon-row ${disabled}" data-tier="${t}" title="${balance.resourceNames[t]} 소환">
+        <div class="header">
+          <span class="tier-label" style="color:${tierColor}">티어 ${t} · ${TIER_TIER_NAMES[t]}</span>
+          <span class="res-count">${balance.resourceNames[t]}: ${have.toLocaleString()}</span>
+        </div>
+        <div class="info">
+          <span class="cost">${minCost}~${maxCost} ${balance.resourceNames[t]}</span>
+          <span class="out">+${tierMin}~+${tierMax} 무작위</span>
+        </div>
+      </div>
+    `;
+  }
+  list.innerHTML = html;
+}
+
+function renderCollection(matReq) {
+  let html = '';
+  let totalStored = 0;
+  let unlockedCount = 0;
+  // +0 is excluded from the collection display (not sellable / not storable)
+  for (let lvl = 1; lvl <= 30; lvl++) {
+    const isUnlocked = !!state.unlocked[lvl];
+    const count = state.collection[lvl] || 0;
+    totalStored += count;
+    if (isUnlocked) unlockedCount++;
+    const svg = buildSwordSVG(lvl, { silhouette: !isUnlocked, width: 60 });
+    let cls;
+    if (isUnlocked) {
+      cls = count > 0 ? 'col-cell unlocked has-count clickable' : 'col-cell unlocked';
+    } else {
+      cls = 'col-cell locked';
+    }
+    if (matReq && matReq.level === lvl) {
+      cls += ' material-needed';
+    }
+    html += `
+      <div class="${cls}" data-level="${lvl}">
+        <div class="col-lvl">+${lvl}</div>
+        <div class="col-sword">${svg}</div>
+        ${count > 0 ? `<div class="col-count">${count}</div>` : ''}
+      </div>
+    `;
+  }
+  collectionGrid.innerHTML = html;
+  $('collection-summary').textContent = `${unlockedCount}/30 발견`;
+  $('total-stored').textContent = totalStored.toLocaleString();
+}
+
+// ============================================================
+//  COLLECTION TOOLTIP (Diablo-style hover info)
+// ============================================================
+const tooltipEl = $('dt-tooltip');
+let tooltipLvl = -1;
+
+function buildTooltipHTML(lvl) {
+  const isUnlocked = !!state.unlocked[lvl];
+  const count = state.collection[lvl] || 0;
+  const tier = getTier(lvl);
+  const tierColor = TIER_COLORS[tier];
+  const name = isUnlocked ? SWORD_NAMES[lvl] : '??? 알 수 없는 검';
+  const sellPrice = getSellPrice(lvl);
+  const totalValue = sellPrice * count;
+  const successRate = lvl < 30 ? SUCCESS_RATES[lvl] + '%' : 'MAX';
+  const cost = getCost(lvl);
+  const subMatReq = getMaterialReq(lvl);
+  const curMatReq = getMaterialReq(state.level);
+  const isCurrentMaterial = curMatReq && curMatReq.level === lvl;
+  const lore = isUnlocked ? TIER_LORE[tier] : '강화 성공으로 정체를 밝혀라.';
+
+  let html = `
+    <div class="dt-name" style="color:${isUnlocked ? tierColor : '#666'}">+${lvl}  ${name}</div>
+    <div class="dt-tier" style="color:${tierColor}">${TIER_TIER_NAMES[tier]} 티어</div>
+    <div class="dt-divider"></div>
+    <div class="dt-row"><span class="dt-label">보관 수량</span><span class="dt-val gold">${count} 개</span></div>
+  `;
+  if (count > 0) {
+    html += `
+      <div class="dt-row"><span class="dt-label">개당 판매가</span><span class="dt-val teal">${sellPrice > 0 ? sellPrice.toLocaleString() + ' G' : '판매 불가'}</span></div>
+      ${sellPrice > 0 ? `<div class="dt-row"><span class="dt-label">전체 가치</span><span class="dt-val gold">${totalValue.toLocaleString()} G</span></div>` : ''}
+    `;
+  }
+  if (isUnlocked) {
+    html += `
+      <div class="dt-divider"></div>
+      <div class="dt-row"><span class="dt-label">강화 성공률</span><span class="dt-val success">${successRate}</span></div>
+      <div class="dt-row"><span class="dt-label">강화 비용</span><span class="dt-val gold">${cost.toLocaleString()} G</span></div>
+    `;
+    if (subMatReq) {
+      html += `<div class="dt-row"><span class="dt-label">강화 재료</span><span class="dt-val warn">+${subMatReq.level} × ${subMatReq.count}</span></div>`;
+    }
+  }
+  if (isCurrentMaterial) {
+    html += `<div class="dt-divider"></div><div class="dt-row"><span class="dt-label">현재 재료 필요</span><span class="dt-val pink">${curMatReq.count}개</span></div>`;
+  }
+  html += `<div class="dt-lore">"${lore}"</div>`;
+  if (count > 0) {
+    html += `<div class="dt-hint">▶ 클릭: 꺼내기 / 판매</div>`;
+  }
+  return html;
+}
+
+function showTooltip(lvl, x, y) {
+  tooltipLvl = lvl;
+  tooltipEl.innerHTML = buildTooltipHTML(lvl);
+  tooltipEl.classList.add('show');
+  positionTooltip(x, y);
+}
+
+function positionTooltip(x, y) {
+  // Reset to measure actual size
+  tooltipEl.style.left = '-9999px';
+  tooltipEl.style.top = '-9999px';
+  // Force reflow
+  void tooltipEl.offsetWidth;
+  const rect = tooltipEl.getBoundingClientRect();
+  const margin = 16;
+  let nx = x + margin, ny = y + margin;
+  if (nx + rect.width > window.innerWidth - 8) nx = x - rect.width - margin;
+  if (ny + rect.height > window.innerHeight - 8) ny = y - rect.height - margin;
+  if (ny < 8) ny = 8;
+  if (nx < 8) nx = 8;
+  tooltipEl.style.left = nx + 'px';
+  tooltipEl.style.top = ny + 'px';
+}
+
+function hideTooltip() {
+  tooltipEl.classList.remove('show');
+  tooltipLvl = -1;
+}
+
+// ============================================================
+//  COLLECTION ACTION MODAL (take out / sell with quantity)
+// ============================================================
+function showCollectionActionModal(lvl) {
+  if (busy) return;
+  if (!state.unlocked[lvl] || (state.collection[lvl] || 0) === 0) return;
+  hideTooltip();
+
+  const count = state.collection[lvl];
+  const sellPrice = getSellPrice(lvl);
+  const name = SWORD_NAMES[lvl];
+  const tier = getTier(lvl);
+  const tierColor = TIER_COLORS[tier];
+
+  const titleEl = $('action-modal-title');
+  titleEl.textContent = `+${lvl} ${name}`;
+  titleEl.style.color = tierColor;
+
+  let qty = 1;
+  const sellable = sellPrice > 0;
+
+  const body = $('action-modal-body');
+  body.innerHTML = `
+    <div class="action-modal-info">
+      <div class="ami-row"><span>티어</span><span class="val" style="color:${tierColor}">${TIER_TIER_NAMES[tier]}</span></div>
+      <div class="ami-row"><span>보관 수량</span><span class="val gold">${count} 개</span></div>
+      <div class="ami-row"><span>개당 판매가</span><span class="val teal">${sellable ? sellPrice.toLocaleString() + ' G' : '판매 불가'}</span></div>
+    </div>
+
+    <div class="action-section">
+      <div class="section-title">▶ 꺼내기 (강화 이어서)</div>
+      <button class="btn store" id="ac-take" style="width:100%; margin-top:4px;">+${lvl} 꺼내기</button>
+      <div class="action-help">
+        ${state.level > 0
+          ? `현재 +${state.level} ${state.unlocked[state.level] ? SWORD_NAMES[state.level] : '???'} 검은 보관함에 자동 보관됩니다`
+          : `현재 +0 검은 폐기됩니다`}
+      </div>
+    </div>
+
+    ${sellable ? `
+    <div class="action-section">
+      <div class="section-title">▶ 판매 (수량 선택)</div>
+      <div class="qty-selector">
+        <button class="qty-btn" id="ac-qty-min">MIN</button>
+        <button class="qty-btn" id="ac-qty-minus">−</button>
+        <span class="qty-display" id="ac-qty-display">1</span>
+        <button class="qty-btn" id="ac-qty-plus">+</button>
+        <button class="qty-btn" id="ac-qty-max">MAX</button>
+      </div>
+      <div class="total-row">
+        <span>총 판매가</span><span class="val" id="ac-total-display">${sellPrice.toLocaleString()} G</span>
+      </div>
+      <button class="btn sell" id="ac-sell" style="width:100%;">선택 수량 판매</button>
+    </div>
+    ` : ''}
+  `;
+
+  $('action-modal-bg').classList.add('show');
+
+  function updateQty(newQty) {
+    qty = Math.max(1, Math.min(count, newQty));
+    $('ac-qty-display').textContent = qty;
+    $('ac-total-display').textContent = (qty * sellPrice).toLocaleString() + ' G';
+  }
+
+  $('ac-take').onclick = () => {
+    closeActionModal();
+    takeOutSword(lvl);
+  };
+  if (sellable) {
+    $('ac-qty-min').onclick = () => { updateQty(1); playSound('click'); };
+    $('ac-qty-minus').onclick = () => { updateQty(qty - 1); playSound('click'); };
+    $('ac-qty-plus').onclick = () => { updateQty(qty + 1); playSound('click'); };
+    $('ac-qty-max').onclick = () => { updateQty(count); playSound('click'); };
+    $('ac-sell').onclick = () => {
+      closeActionModal();
+      sellFromCollection(lvl, qty);
+    };
+  }
+}
+
+function closeActionModal() {
+  $('action-modal-bg').classList.remove('show');
+}
+
+function takeOutSword(targetLvl) {
+  if (busy) return;
+  if ((state.collection[targetLvl] || 0) === 0) return;
+
+  // Auto-store current sword if level > 0
+  if (state.level > 0) {
+    state.collection[state.level] = (state.collection[state.level] || 0) + 1;
+    state.stats.stored += 1;
+    logMsg(`📦 +${state.level} ${SWORD_NAMES[state.level]} 자동 보관 (꺼내기 교체)`, 'store');
+  }
+  // Take out target
+  state.collection[targetLvl] -= 1;
+  state.level = targetLvl;
+
+  saveState();
+  render();
+  playSound('store');
+  showToast(`+${targetLvl} 꺼냄!`, 'store');
+  logMsg(`🔄 +${targetLvl} ${SWORD_NAMES[targetLvl]} 꺼내서 강화 재개`, 'store');
+}
+
+function sellFromCollection(lvl, quantity) {
+  if (busy) return;
+  const have = state.collection[lvl] || 0;
+  quantity = Math.max(1, Math.min(have, quantity));
+  if (quantity === 0) return;
+  const sellPrice = getSellPrice(lvl);
+  if (sellPrice <= 0) return;
+  const total = sellPrice * quantity;
+  state.collection[lvl] -= quantity;
+  state.gold += total;
+  state.stats.goldEarned += total;
+  state.stats.sold += quantity;
+
+  saveState();
+  render();
+  playSound('cash');
+  showToast(`+${total.toLocaleString()} G`, 'sell');
+  logMsg(`💰 +${lvl} ${SWORD_NAMES[lvl]} ${quantity}개 일괄 판매 (+${total.toLocaleString()} G)`, 'sell');
+}
+
+// ============================================================
+//  RENTAL RESOLUTION — offline progression for active rentals
+// ============================================================
+function dungeonRewards(tier, floor) {
+  const cfg = balance.dungeons[tier];
+  const floorMult = 1 + (floor - 1) * 0.5;
+  return {
+    gold: Math.floor(cfg.baseRewardGold * floorMult),
+    resource: Math.max(1, Math.floor(cfg.baseRewardResource * floorMult))
+  };
+}
+function _applyRateGap(rate, gap) {
+  if (gap === 0) return rate;
+  if (gap < 0) return Math.max(1, rate - Math.abs(gap) * (balance.tierMismatchPenalty || 0));
+  return Math.min(100, rate + gap * (balance.tierMismatchBonus || 0));
+}
+function _applyDurGap(mult, gap) {
+  if (gap === 0) return mult;
+  if (gap > 0) {
+    const red = Math.min(50, gap * (balance.tierMismatchTimeBonus || 0));
+    return mult * (1 - red / 100);
+  }
+  const ext = Math.min(100, Math.abs(gap) * (balance.tierMismatchTimePenalty || 0));
+  return mult * (1 + ext / 100);
+}
+function adjustedSuccessRate(swordLevel, dungeonTier, heroTier) {
+  let rate = balance.dungeons[dungeonTier].successRate;
+  rate = _applyRateGap(rate, getTier(swordLevel) - dungeonTier);
+  if (typeof heroTier === 'number') rate = _applyRateGap(rate, heroTier - dungeonTier);
+  return Math.max(1, Math.min(100, rate));
+}
+function adjustedDuration(swordLevel, dungeonTier, heroTier) {
+  let mult = 1;
+  mult = _applyDurGap(mult, getTier(swordLevel) - dungeonTier);
+  if (typeof heroTier === 'number') mult = _applyDurGap(mult, heroTier - dungeonTier);
+  mult = Math.max(0.25, Math.min(4, mult));
+  return Math.floor(balance.dungeons[dungeonTier].durationMs * mult);
+}
+function resolveRentals() {
+  const now = Date.now();
+  state.rentals = state.rentals || [];
+  state.deadSwords = state.deadSwords || [];
+  state.dungeonProgress = state.dungeonProgress || {};
+  const resolved = [];
+  const remaining = [];
+  state.rentals.forEach(r => {
+    if (now < r.endTime) { remaining.push(r); return; }
+    const rate = (typeof r.adjustedSuccessRate === 'number')
+      ? r.adjustedSuccessRate
+      : balance.dungeons[r.dungeonTier].successRate;
+    const isSuccess = (Math.random() * 100) < rate;
+    r.outcome = isSuccess ? 'success' : 'fail';
+    r.resolvedAt = now;
+    r.resolved = true;
+    resolved.push(r);
+  });
+  resolved.forEach(r => {
+    const cfg = balance.dungeons[r.dungeonTier];
+    if (r.outcome === 'success') {
+      const reward = dungeonRewards(r.dungeonTier, r.floor);
+      const heroCutPct = (typeof r.heroPayRate === 'number') ? r.heroPayRate : 0;
+      const heroCut = Math.floor(reward.gold * heroCutPct / 100);
+      const playerGold = reward.gold - heroCut;
+      r.heroCut = heroCut; r.playerGold = playerGold;
+      state.gold += playerGold;
+      const resKey = ['iron','steel','mystic','crystal','inferno','legendary'][r.dungeonTier];
+      state.resources[resKey] = (state.resources[resKey] || 0) + reward.resource;
+      state.stats.goldEarned += playerGold;
+      state.stats.rentalsSucceeded = (state.stats.rentalsSucceeded || 0) + 1;
+      if (r.swordLevel >= 1 && r.swordLevel <= 30) {
+        state.collection[r.swordLevel] = (state.collection[r.swordLevel] || 0) + 1;
+      }
+      const recovered = state.deadSwords.filter(d => d.dungeonTier === r.dungeonTier && d.floor === r.floor);
+      recovered.forEach(d => {
+        if (d.swordLevel >= 1 && d.swordLevel <= 30) {
+          state.collection[d.swordLevel] = (state.collection[d.swordLevel] || 0) + 1;
+        }
+      });
+      r.recoveredCount = recovered.length;
+      state.deadSwords = state.deadSwords.filter(d => !(d.dungeonTier === r.dungeonTier && d.floor === r.floor));
+      const prog = state.dungeonProgress[r.dungeonTier] || { unlocked: true, bestFloor: 0 };
+      if (r.floor > prog.bestFloor) prog.bestFloor = r.floor;
+      state.dungeonProgress[r.dungeonTier] = prog;
+      if (r.dungeonTier < 5) {
+        const next = state.dungeonProgress[r.dungeonTier + 1] || { unlocked: false, bestFloor: 0 };
+        if (!next.unlocked) {
+          next.unlocked = true;
+          state.dungeonProgress[r.dungeonTier + 1] = next;
+          r.unlockedNextTier = r.dungeonTier + 1;
+        }
+      }
+      logMsg(`🎉 ${r.heroName} 귀환! +${r.swordLevel} 회수 + ${playerGold.toLocaleString()} G` +
+        (heroCut > 0 ? ` (용사 보수 ${heroCut.toLocaleString()})` : '') +
+        ` + ${reward.resource} ${balance.resourceNames[r.dungeonTier]}` +
+        (recovered.length ? ` + 회수 검 ${recovered.length}` : ''), 'success');
+    } else {
+      state.deadSwords.push({
+        dungeonTier: r.dungeonTier, floor: r.floor,
+        swordLevel: r.swordLevel, heroName: r.heroName, lostAt: now
+      });
+      state.stats.rentalsFailed = (state.stats.rentalsFailed || 0) + 1;
+      logMsg(`💀 ${r.heroName} 사망. +${r.swordLevel} 검이 ${cfg.name} ${r.floor}F 에 갇힘.`, 'destroy');
+    }
+  });
+  state.rentals = remaining;
+  if (resolved.length > 0) saveState();
+  return { resolved: resolved, didChange: resolved.length > 0 };
+}
+
+// ============================================================
+//  TIER SUMMON — spend tier resource, get random-level sword
+// ============================================================
+const RESOURCE_KEYS = ['iron', 'steel', 'mystic', 'crystal', 'inferno', 'legendary'];
+
+function tierBounds(tier) {
+  const min = tier * 5;
+  const max = tier === 5 ? 30 : (min + 4);
+  return { min, max };
+}
+
+function getSummonCost(level) {
+  const tier = getTier(level);
+  const sublevel = level - tier * 5;
+  return Math.max(1, balance.summonBaseCost) * Math.pow(2, sublevel);
+}
+
+function getSummonCostRange(tier) {
+  const { min, max } = tierBounds(tier);
+  return { minCost: getSummonCost(min), maxCost: getSummonCost(max) };
+}
+
+function summonTier(tier) {
+  if (busy) return;
+  if (tier < 0 || tier > 5) return;
+  const resKey = RESOURCE_KEYS[tier];
+  if (!state.resources) state.resources = { iron: 0, steel: 0, mystic: 0, crystal: 0, inferno: 0, legendary: 0 };
+  const have = state.resources[resKey] || 0;
+  const { min: tierMin, max: tierMax } = tierBounds(tier);
+  const minCost = getSummonCost(tierMin);
+
+  if (have < minCost && !cheats.infiniteMaterials) {
+    showToast(`${balance.resourceNames[tier]} 부족 (최소 ${minCost})`, 'fail');
+    return;
+  }
+
+  // Roll uniform within tier range
+  let rolledLevel = tierMin + Math.floor(Math.random() * (tierMax - tierMin + 1));
+  let cost = getSummonCost(rolledLevel);
+  let downgraded = false;
+
+  // Downgrade if can't afford the rolled level
+  if (!cheats.infiniteMaterials) {
+    while (cost > have && rolledLevel > tierMin) {
+      rolledLevel -= 1;
+      cost = getSummonCost(rolledLevel);
+      downgraded = true;
+    }
+  }
+
+  // Deduct resource
+  if (!cheats.infiniteMaterials) {
+    state.resources[resKey] = Math.max(0, have - cost);
+  }
+
+  // Auto-store currently equipped sword (if > +0) before equipping new one
+  if (state.level > 0) {
+    state.collection[state.level] = (state.collection[state.level] || 0) + 1;
+    state.stats.stored = (state.stats.stored || 0) + 1;
+    logMsg(`📦 +${state.level} ${SWORD_NAMES[state.level]} 자동 보관 (소환 교체)`, 'store');
+  }
+
+  // Equip rolled sword (replaces current state.level)
+  state.level = rolledLevel;
+  if (rolledLevel > (state.stats.best || 0)) state.stats.best = rolledLevel;
+
+  // First-time unlock if needed
+  let firstUnlock = false;
+  if (!state.unlocked[rolledLevel]) {
+    state.unlocked[rolledLevel] = true;
+    firstUnlock = true;
+  }
+
+  saveState();
+  render();
+
+  // Visual feedback on the freshly-equipped sword
+  clearAnims();
+  void swordContainer.offsetWidth;
+  swordContainer.classList.add('success');
+  const palette = getSwordPalette(state.level);
+  spawnParticles(15, palette.jewel);
+  playSound('success');
+
+  const swordName = SWORD_NAMES[rolledLevel] || `+${rolledLevel}`;
+  const dgTag = downgraded ? ' (다운그레이드)' : '';
+  showToast(`+${rolledLevel} ${swordName} 소환!${dgTag}`, downgraded ? 'fail' : 'unlock');
+  logMsg(`✨ 소환! +${rolledLevel} ${swordName} (${cost} ${balance.resourceNames[tier]} 소모)${dgTag}`, 'unlock');
+  if (firstUnlock) {
+    logMsg(`🔓 새로운 검 발견: +${rolledLevel} ${swordName}`, 'unlock');
+  }
+}
+
+function logMsg(text, type='info') {
+  state.log.push({ text, type, t: Date.now() });
+  if (state.log.length > 200) state.log = state.log.slice(-200);
+}
+
+let toastTimer = null;
+function showToast(text, type='info') {
+  toast.className = 'toast show ' + type;
+  toast.textContent = text;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+}
+
+function spawnParticles(count, color) {
+  const stageRect = swordStage.getBoundingClientRect();
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.background = color;
+    p.style.left = (stageRect.width/2 - 3) + 'px';
+    p.style.top = (stageRect.height/2 - 3) + 'px';
+    sparklesEl.appendChild(p);
+    const angle = (Math.PI * 2) * (i / count) + Math.random() * 0.4;
+    const dist = 80 + Math.random() * 90;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist;
+    p.animate(
+      [
+        { transform: 'translate(0,0) scale(1.4)', opacity: 1 },
+        { transform: `translate(${dx}px, ${dy}px) scale(0)`, opacity: 0 }
+      ],
+      { duration: 700 + Math.random() * 400, easing: 'cubic-bezier(0.25, 0.8, 0.5, 1)' }
+    ).onfinish = () => p.remove();
+  }
+}
+
+function clearAnims() {
+  swordContainer.classList.remove('shake', 'success', 'fail', 'broken', 'sold', 'stored', 'protect');
+}
+
+// ----- Action: Enhance -----
+async function attemptEnhance() {
+  if (busy) return;
+  if (state.level >= MAX_LEVEL) return;
+
+  const cost = getCost(state.level);
+  if (!cheats.infiniteGold && state.gold < cost) {
+    showToast('골드 부족', 'fail');
+    return;
+  }
+
+  // Iron check (only at +0 attempts)
+  const ironCost = state.level === 0 ? balance.startIronCost : 0;
+  if (ironCost > 0 && !cheats.infiniteMaterials && (state.resources?.iron || 0) < ironCost) {
+    showToast(`철 ${ironCost}개 필요`, 'fail');
+    return;
+  }
+
+  // Material check
+  const matReq = getMaterialReq(state.level);
+  if (matReq && !cheats.infiniteMaterials && (state.collection[matReq.level] || 0) < matReq.count) {
+    showToast(`+${matReq.level} 검 ${matReq.count}개 필요`, 'fail');
+    return;
+  }
+
+  // Consume one-shot cheat for this attempt
+  const cheatOverride = cheats.forceNext;
+  cheats.forceNext = null;
+
+  busy = true;
+  render();
+
+  // Consume gold + iron + materials + items
+  if (!cheats.infiniteGold) state.gold -= cost;
+  state.stats.goldSpent += cost;
+  state.stats.attempts += 1;
+
+  // Iron consumed only at +0 attempts (forging a fresh blade)
+  let usedIron = 0;
+  if (ironCost > 0 && !cheats.infiniteMaterials) {
+    state.resources.iron = Math.max(0, (state.resources.iron || 0) - ironCost);
+    usedIron = ironCost;
+  }
+
+  if (matReq && !cheats.infiniteMaterials) {
+    state.collection[matReq.level] -= matReq.count;
+  }
+
+  const baseRate = SUCCESS_RATES[state.level];
+  const bonus = computeBonus();
+  const finalRate = Math.min(100, baseRate + bonus);
+
+  let usedFrag = 0, usedStones = 0, usedProtect = false;
+  if (state.useFragment && state.fragments > 0) {
+    if (!cheats.infiniteItems) {
+      state.fragments -= 1;
+      state.useFragment = false;
+    }
+    usedFrag = 1;
+  }
+  if (state.useStones > 0 && state.stones > 0) {
+    usedStones = Math.min(state.useStones, state.stones);
+    if (!cheats.infiniteItems) {
+      state.stones -= usedStones;
+      state.useStones = 0;
+    }
+  }
+  if (state.useProtection && state.protections > 0) {
+    if (!cheats.infiniteItems) {
+      state.protections -= 1;
+      state.useProtection = false;
+    }
+    usedProtect = true;
+  }
+
+  saveState();
+  render();
+
+  clearAnims();
+  void swordContainer.offsetWidth;
+  swordContainer.classList.add('shake');
+  playSound('anvil');
+
+  await sleep(500);
+
+  const roll = Math.random() * 100;
+  let succeeded;
+  if (cheatOverride === 'success') succeeded = true;
+  else if (cheatOverride) succeeded = false;
+  else succeeded = roll < finalRate;
+
+  if (succeeded) {
+    state.level += 1;
+    state.stats.success += 1;
+    if (state.level > state.stats.best) state.stats.best = state.level;
+    clearAnims();
+    void swordContainer.offsetWidth;
+    swordContainer.classList.add('success');
+    playSound('success');
+    const palette = getSwordPalette(state.level);
+    spawnParticles(20 + state.level, palette.jewel);
+    let modText = '';
+    const used = [];
+    if (usedIron) used.push(`철 ${usedIron}`);
+    if (usedFrag) used.push('검조각 1');
+    if (usedStones) used.push(`강화석 ${usedStones}`);
+    if (usedProtect) used.push('보호석 1');
+    if (matReq) used.push(`+${matReq.level} 검 ${matReq.count}`);
+    if (used.length) modText = ` [${used.join(', ')} 사용]`;
+    logMsg(`✦ 성공! +${state.level-1} → +${state.level}${modText}`, 'success');
+    showToast(`성공! +${state.level}`, 'success');
+
+    if (!state.unlocked[state.level]) {
+      state.unlocked[state.level] = true;
+      logMsg(`🔓 새로운 검 발견: +${state.level} ${SWORD_NAMES[state.level]}`, 'unlock');
+      setTimeout(() => showToast(`발견! ${SWORD_NAMES[state.level]}`, 'unlock'), 800);
+    }
+
+    if (state.level === MAX_LEVEL) {
+      logMsg('🎉 전설의 검 +30 달성!', 'success');
+    }
+  } else {
+    state.stats.fail += 1;
+    let outcome = rollFailure(state.level);
+    // Cheat override forces specific failure outcome
+    if (cheatOverride === 'maintain' || cheatOverride === 'downgrade' || cheatOverride === 'destroy') {
+      outcome = cheatOverride;
+    }
+    let protectionTriggered = false;
+    if (usedProtect && (outcome === 'destroy' || outcome === 'downgrade')) {
+      outcome = 'maintain';
+      protectionTriggered = true;
+    }
+
+    clearAnims();
+    void swordContainer.offsetWidth;
+
+    if (protectionTriggered) {
+      swordContainer.classList.add('protect');
+      playSound('protect');
+      state.stones = Math.min(state.stones + 1, 99);
+      logMsg(`🛡 보호석 발동! 파괴/하락 방지 (+${state.level} 유지, 강화석 +1)`, 'protect');
+      showToast('보호석 발동!', 'protect');
+    } else if (outcome === 'destroy') {
+      const dropMin = balance.fragmentDropMin, dropMax = balance.fragmentDropMax;
+      const droppedFrags = dropMin + Math.floor(Math.random() * (dropMax - dropMin + 1));
+      const refund = Math.floor(cost * balance.destroyRefundRate);
+      const lostLevel = state.level;
+      state.fragments = Math.min(state.fragments + droppedFrags, 99);
+      state.gold += refund;
+      state.stats.goldEarned += refund;
+      state.stats.broken += 1;
+      swordContainer.classList.add('broken');
+      playSound('destroy');
+      logMsg(`💥 검 파괴! +${lostLevel} → +0 (검 조각 +${droppedFrags}, 골드 +${refund})`, 'destroy');
+      showToast('검이 파괴되었다!', 'destroy');
+      await sleep(900);
+      state.level = 0;
+    } else if (outcome === 'downgrade') {
+      const lostLevel = state.level;
+      state.stones = Math.min(state.stones + 1, 99);
+      state.level = Math.max(0, state.level - 1);
+      swordContainer.classList.add('fail');
+      playSound('fail');
+      logMsg(`▼ 강화 실패 (하락): +${lostLevel} → +${state.level} (강화석 +1)`, 'fail');
+      showToast('실패... 등급 하락', 'fail');
+    } else {
+      state.stones = Math.min(state.stones + 1, 99);
+      swordContainer.classList.add('fail');
+      playSound('fail');
+      logMsg(`✗ 강화 실패 (유지): +${state.level} (강화석 +1)`, 'fail');
+      showToast('실패... 유지', 'fail');
+    }
+  }
+
+  saveState();
+  render();
+  await sleep(450);
+  clearAnims();
+  busy = false;
+  render();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ----- Action: Sell -----
+async function sellSword() {
+  if (busy) return;
+  if (state.level === 0) {
+    showToast('+0 검은 판매 불가', 'fail');
+    return;
+  }
+  const sellPrice = getSellPrice(state.level);
+  const lvl = state.level;
+  const name = state.unlocked[lvl] ? SWORD_NAMES[lvl] : '???';
+  showModal(
+    '검 판매',
+    `+${lvl} ${name} 검을 ${sellPrice.toLocaleString()} G 에 판매하시겠습니까?\n검은 +0 으로 초기화됩니다.`,
+    async () => {
+      busy = true;
+      render();
+
+      clearAnims();
+      void swordContainer.offsetWidth;
+      swordContainer.classList.add('sold');
+      playSound('cash');
+      const palette = getSwordPalette(state.level);
+      spawnParticles(15, palette.jewel);
+
+      state.gold += sellPrice;
+      state.stats.goldEarned += sellPrice;
+      state.stats.sold += 1;
+      logMsg(`💰 +${lvl} ${name} 판매! ${sellPrice.toLocaleString()} G 획득`, 'sell');
+      showToast(`+${sellPrice.toLocaleString()} G`, 'sell');
+
+      await sleep(700);
+      state.level = 0;
+      saveState();
+      render();
+      clearAnims();
+      busy = false;
+      render();
+    }
+  );
+}
+
+// ----- Action: Store -----
+async function storeSword() {
+  if (busy) return;
+  if (state.level === 0) {
+    showToast('+0 검은 보관 불가', 'fail');
+    return;
+  }
+  const lvl = state.level;
+  const name = state.unlocked[lvl] ? SWORD_NAMES[lvl] : '???';
+  const currentCount = state.collection[lvl];
+  showModal(
+    '검 보관',
+    `+${lvl} ${name} 검을 보관함에 보관하시겠습니까?\n(현재 ${currentCount}개 → ${currentCount+1}개)\n검은 +0 으로 초기화됩니다.`,
+    async () => {
+      busy = true;
+      render();
+
+      clearAnims();
+      void swordContainer.offsetWidth;
+      swordContainer.classList.add('stored');
+      playSound('store');
+      const palette = getSwordPalette(state.level);
+      spawnParticles(12, palette.jewel);
+
+      state.collection[lvl] = (state.collection[lvl] || 0) + 1;
+      state.stats.stored += 1;
+      logMsg(`📦 +${lvl} ${name} 보관! (총 ${state.collection[lvl]}개)`, 'store');
+      showToast(`+${lvl} 보관!`, 'store');
+
+      await sleep(700);
+      state.level = 0;
+      saveState();
+      render();
+      clearAnims();
+      busy = false;
+      render();
+    }
+  );
+}
+
+// ----- Shop actions -----
+function buyStone() {
+  if (busy) return;
+  if (!cheats.infiniteGold && state.gold < SHOP_PRICE_STONE) { showToast('골드 부족', 'fail'); return; }
+  if (!cheats.infiniteGold) state.gold -= SHOP_PRICE_STONE;
+  state.stats.goldSpent += SHOP_PRICE_STONE;
+  state.stones = Math.min(state.stones + 1, 99);
+  playSound('cash');
+  logMsg(`🛒 강화석 1개 구매 (-${SHOP_PRICE_STONE.toLocaleString()} G)`, 'gain');
+  showToast('강화석 +1', 'sell');
+  saveState(); render();
+}
+
+function buyProtect(amount) {
+  if (busy) return;
+  const price = amount === 10 ? SHOP_PRICE_PROTECT_10 : SHOP_PRICE_PROTECT_1;
+  if (!cheats.infiniteGold && state.gold < price) { showToast('골드 부족', 'fail'); return; }
+  if (!cheats.infiniteGold) state.gold -= price;
+  state.stats.goldSpent += price;
+  state.protections = Math.min(state.protections + amount, 99);
+  playSound('cash');
+  logMsg(`🛒 보호석 ${amount}개 구매 (-${price.toLocaleString()} G)`, 'gain');
+  showToast(`보호석 +${amount}`, 'sell');
+  saveState(); render();
+}
+
+function showModal(title, text, onConfirm) {
+  $('modal-title').textContent = title;
+  $('modal-text').textContent = text;
+  $('modal-bg').classList.add('show');
+  $('modal-confirm').onclick = () => {
+    $('modal-bg').classList.remove('show');
+    playSound('click');
+    onConfirm();
+  };
+  $('modal-cancel').onclick = () => {
+    $('modal-bg').classList.remove('show');
+    playSound('click');
+  };
+}
+
+function resetGame() {
+  showModal(
+    '게임 초기화',
+    '모든 강화 상태, 통계, 보관함이 초기화됩니다. 계속할까요?',
+    () => {
+      const soundOn = state.soundOn;
+      state = defaultState();
+      state.soundOn = soundOn;
+      logMsg('★ 새 게임을 시작합니다.', 'info');
+      saveState();
+      render();
+      showToast('초기화 완료', 'info');
+    }
+  );
+}
+
+// ============================================================
+//  ADMIN BALANCE PANEL
+// ============================================================
+function openAdminPanel() {
+  populateAdminForm();
+  $('admin-panel').classList.add('show');
+}
+function closeAdminPanel() {
+  $('admin-panel').classList.remove('show');
+}
+
+function populateAdminForm() {
+  // Economy
+  $('ad-startGold').value = balance.startGold;
+  $('ad-costBase').value = balance.costBase;
+  $('ad-costExp').value = balance.costExp;
+  $('ad-costMult').value = balance.costMult;
+  $('ad-sellAnchor').value = balance.sellAnchor;
+  $('ad-sellAnchorLvl').value = balance.sellAnchorLvl;
+  $('ad-sellRatio').value = balance.sellRatio;
+  $('ad-shopStone').value = balance.shopStone;
+  $('ad-shopProtect1').value = balance.shopProtect1;
+  $('ad-shopProtect10').value = balance.shopProtect10;
+
+  // Items
+  $('ad-fragmentBonus').value = balance.fragmentBonus;
+  $('ad-stoneBonusEach').value = balance.stoneBonusEach;
+  $('ad-stoneMaxStack').value = balance.stoneMaxStack;
+  $('ad-destroyRefundRate').value = balance.destroyRefundRate;
+  $('ad-fragmentDropMin').value = balance.fragmentDropMin;
+  $('ad-fragmentDropMax').value = balance.fragmentDropMax;
+  $('ad-startingIron').value = balance.startingIron;
+  $('ad-startIronCost').value = balance.startIronCost;
+  $('ad-summonBaseCost').value = balance.summonBaseCost;
+
+  // Material
+  $('ad-materialStartLvl').value = balance.materialStartLvl;
+  $('ad-materialOffset').value = balance.materialOffset;
+
+  // Success rates grid
+  const ratesGrid = $('ad-rates-grid');
+  ratesGrid.innerHTML = '';
+  for (let i = 0; i < 30; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'admin-rates-cell';
+    cell.innerHTML = `<div class="label">+${i}→+${i+1}</div><input type="number" id="ad-rate-${i}" step="0.01" min="0" max="100" value="${balance.successRates[i]}">`;
+    ratesGrid.appendChild(cell);
+  }
+
+  // Failure rules
+  const frBox = $('ad-failure-rules');
+  frBox.innerHTML = '';
+  balance.failureRules.forEach((rule, i) => {
+    const div = document.createElement('div');
+    div.className = 'admin-failure-rule';
+    div.innerHTML = `
+      <div class="row"><label>최대 레벨</label><input type="number" id="ad-fr-${i}-maxLevel" step="1" value="${rule.maxLevel}"></div>
+      <div class="row"><label>유지</label><input type="number" id="ad-fr-${i}-maintain" step="0.05" min="0" max="1" value="${rule.maintain}"></div>
+      <div class="row"><label>하락</label><input type="number" id="ad-fr-${i}-downgrade" step="0.05" min="0" max="1" value="${rule.downgrade}"></div>
+      <div class="row"><label>파괴</label><input type="number" id="ad-fr-${i}-destroy" step="0.05" min="0" max="1" value="${rule.destroy}"></div>
+    `;
+    frBox.appendChild(div);
+  });
+
+  // Tier names + colors
+  const tiersBox = $('ad-tiers');
+  tiersBox.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const div = document.createElement('div');
+    div.className = 'admin-tier-row';
+    div.innerHTML = `
+      <div class="tier-idx">티어 ${i}</div>
+      <input type="text" id="ad-tierName-${i}" value="${(balance.tierNames[i]||'').replace(/"/g,'&quot;')}">
+      <input type="color" id="ad-tierColor-${i}" value="${balance.tierColors[i]}">
+    `;
+    tiersBox.appendChild(div);
+  }
+
+  // Tier lore
+  const loresBox = $('ad-lores');
+  loresBox.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const div = document.createElement('div');
+    div.className = 'admin-lore-row';
+    div.innerHTML = `
+      <div class="lore-label">티어 ${i} (${balance.tierNames[i]||''})</div>
+      <textarea id="ad-tierLore-${i}" rows="2">${balance.tierLore[i]||''}</textarea>
+    `;
+    loresBox.appendChild(div);
+  }
+
+  // Resource names
+  const resnamesBox = $('ad-resnames');
+  if (resnamesBox) {
+    resnamesBox.innerHTML = '';
+    for (let i = 0; i < 6; i++) {
+      const div = document.createElement('div');
+      div.className = 'admin-tier-row';
+      const tcolor = balance.tierColors[i] || '#fff';
+      div.innerHTML = `
+        <div class="tier-idx" style="color:${tcolor}">티어 ${i}</div>
+        <input type="text" id="ad-resname-${i}" value="${(balance.resourceNames[i]||'').replace(/"/g,'&quot;')}" maxlength="10">
+      `;
+      resnamesBox.appendChild(div);
+    }
+  }
+
+  // Sword names
+  const namesBox = $('ad-names');
+  namesBox.innerHTML = '';
+  for (let i = 0; i <= 30; i++) {
+    const div = document.createElement('div');
+    div.className = 'admin-name-row';
+    div.innerHTML = `<div class="lvl">+${i}</div><input type="text" id="ad-name-${i}" value="${(balance.swordNames[i]||'').replace(/"/g,'&quot;')}">`;
+    namesBox.appendChild(div);
+  }
+}
+
+function readAdminForm() {
+  const num = id => parseFloat($(id).value) || 0;
+  const intv = id => parseInt($(id).value, 10) || 0;
+  const txt = id => $(id).value || '';
+
+  const newBalance = {
+    startGold: intv('ad-startGold'),
+    costBase: num('ad-costBase'),
+    costExp: num('ad-costExp'),
+    costMult: num('ad-costMult'),
+    sellAnchor: num('ad-sellAnchor'),
+    sellAnchorLvl: intv('ad-sellAnchorLvl'),
+    sellRatio: num('ad-sellRatio'),
+    shopStone: intv('ad-shopStone'),
+    shopProtect1: intv('ad-shopProtect1'),
+    shopProtect10: intv('ad-shopProtect10'),
+    fragmentBonus: num('ad-fragmentBonus'),
+    stoneBonusEach: num('ad-stoneBonusEach'),
+    stoneMaxStack: intv('ad-stoneMaxStack'),
+    destroyRefundRate: num('ad-destroyRefundRate'),
+    fragmentDropMin: intv('ad-fragmentDropMin'),
+    fragmentDropMax: intv('ad-fragmentDropMax'),
+    startingIron: intv('ad-startingIron'),
+    startIronCost: intv('ad-startIronCost'),
+    summonBaseCost: Math.max(1, intv('ad-summonBaseCost')),
+    materialStartLvl: intv('ad-materialStartLvl'),
+    materialOffset: intv('ad-materialOffset'),
+    successRates: [],
+    failureRules: [],
+    swordNames: [],
+    tierNames: [],
+    tierColors: [],
+    tierLore: [],
+    resourceNames: []
+  };
+  for (let i = 0; i < 30; i++) newBalance.successRates.push(num(`ad-rate-${i}`));
+  for (let i = 0; i < balance.failureRules.length; i++) {
+    newBalance.failureRules.push({
+      maxLevel: intv(`ad-fr-${i}-maxLevel`),
+      maintain: num(`ad-fr-${i}-maintain`),
+      downgrade: num(`ad-fr-${i}-downgrade`),
+      destroy: num(`ad-fr-${i}-destroy`)
+    });
+  }
+  for (let i = 0; i <= 30; i++) newBalance.swordNames.push(txt(`ad-name-${i}`));
+  for (let i = 0; i < 6; i++) {
+    newBalance.tierNames.push(txt(`ad-tierName-${i}`));
+    newBalance.tierColors.push(txt(`ad-tierColor-${i}`));
+    newBalance.tierLore.push(txt(`ad-tierLore-${i}`));
+    const rn = $(`ad-resname-${i}`);
+    newBalance.resourceNames.push(rn ? rn.value : (balance.resourceNames[i] || ''));
+  }
+  return newBalance;
+}
+
+function applyAdminForm() {
+  const next = readAdminForm();
+  // Validate
+  if (next.successRates.length !== 30) { showToast('성공률 30개 필요', 'fail'); return; }
+  if (next.swordNames.length !== 31) { showToast('검 이름 31개 필요', 'fail'); return; }
+  if (next.fragmentDropMin > next.fragmentDropMax) {
+    showToast('검조각 최소 > 최대', 'fail'); return;
+  }
+  // Apply
+  balance = next;
+  applyBalance();
+  showToast('밸런스 적용됨', 'success');
+  playSound('success');
+}
+
+function exportBalanceConfig() {
+  const json = JSON.stringify(balance, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sword-balance-' + new Date().toISOString().replace(/[:.]/g,'-').slice(0,19) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Export 완료', 'info');
+  playSound('store');
+}
+
+function triggerImport() {
+  $('ad-import-file').click();
+}
+
+function handleImportFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (typeof parsed !== 'object' || parsed === null) throw new Error('Invalid JSON');
+      // Merge with defaults to fill gaps
+      balance = Object.assign(deepClone(BALANCE_DEFAULTS), parsed);
+      applyBalance();
+      populateAdminForm();
+      showToast('Import 완료', 'success');
+      playSound('success');
+    } catch (err) {
+      showToast('Import 실패: ' + err.message, 'fail');
+      playSound('fail');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function adminReset() {
+  if (!confirm('모든 밸런스 설정을 기본값으로 복원합니다. 계속할까요?')) return;
+  resetBalance();
+  populateAdminForm();
+  showToast('기본값 복원됨', 'info');
+  playSound('click');
+}
+
+// ============================================================
+//  DEBUG / PLAYER PANEL
+// ============================================================
+function openDebugPanel() {
+  populateDebugForm();
+  $('debug-panel').classList.add('show');
+}
+function closeDebugPanel() {
+  $('debug-panel').classList.remove('show');
+}
+
+function populateDebugForm() {
+  // Player
+  $('dbg-level').value = state.level;
+  $('dbg-gold').value = state.gold;
+  $('dbg-fragments').value = state.fragments;
+  $('dbg-stones').value = state.stones;
+  $('dbg-protections').value = state.protections;
+
+  // Resources
+  if (!state.resources) state.resources = { iron: 0, steel: 0, mystic: 0, crystal: 0, inferno: 0, legendary: 0 };
+  ['iron','steel','mystic','crystal','inferno','legendary'].forEach(k => {
+    const el = $('dbg-res-' + k);
+    if (el) el.value = state.resources[k] || 0;
+  });
+
+  // Cheat current
+  updateCheatStatus();
+  $('dbg-cheat-gold').checked = cheats.infiniteGold;
+  $('dbg-cheat-items').checked = cheats.infiniteItems;
+  $('dbg-cheat-materials').checked = cheats.infiniteMaterials;
+
+  // Collection list
+  const list = $('dbg-collection-list');
+  list.innerHTML = '';
+  for (let i = 0; i <= 30; i++) {
+    const row = document.createElement('div');
+    row.className = 'debug-coll-row';
+    const isUnlocked = !!state.unlocked[i];
+    row.innerHTML = `
+      <span class="lvl">+${i}</span>
+      <span class="name">${isUnlocked ? SWORD_NAMES[i] : '???'}</span>
+      <label style="font-size:9px; color:#9b8fbf;">해금</label>
+      <input type="checkbox" id="dbg-unlock-${i}" ${isUnlocked ? 'checked' : ''} ${i === 0 ? 'disabled' : ''}>
+      <label style="font-size:9px; color:#9b8fbf;">수량</label>
+      <input type="number" id="dbg-count-${i}" min="0" max="999" value="${state.collection[i] || 0}" ${i === 0 ? 'disabled' : ''}>
+    `;
+    list.appendChild(row);
+  }
+
+  // Save size
+  const saveData = localStorage.getItem(SAVE_KEY) || '';
+  const balanceData = localStorage.getItem(BALANCE_KEY) || '';
+  const totalSize = saveData.length + balanceData.length;
+  $('dbg-save-size').textContent = `${saveData.length.toLocaleString()} + ${balanceData.length.toLocaleString()} = ${totalSize.toLocaleString()} bytes`;
+}
+
+function updateCheatStatus() {
+  const map = {
+    'success': '✦ 성공 강제',
+    'maintain': '✗ 유지 강제',
+    'downgrade': '▼ 하락 강제',
+    'destroy': '💥 파괴 강제'
+  };
+  const cur = cheats.forceNext ? map[cheats.forceNext] : '자동 (기본 확률)';
+  $('dbg-cheat-current').textContent = `현재: ${cur}`;
+}
+
+// Action handlers
+const debugActions = {
+  'set-level': () => debugSetLevel(parseInt($('dbg-level').value)),
+  'set-gold': () => debugSetGold(parseInt($('dbg-gold').value)),
+  'set-fragments': () => debugSetItem('fragments', parseInt($('dbg-fragments').value)),
+  'set-stones': () => debugSetItem('stones', parseInt($('dbg-stones').value)),
+  'set-protections': () => debugSetItem('protections', parseInt($('dbg-protections').value)),
+  'set-res-iron': () => debugSetResource('iron', parseInt($('dbg-res-iron').value)),
+  'set-res-steel': () => debugSetResource('steel', parseInt($('dbg-res-steel').value)),
+  'set-res-mystic': () => debugSetResource('mystic', parseInt($('dbg-res-mystic').value)),
+  'set-res-crystal': () => debugSetResource('crystal', parseInt($('dbg-res-crystal').value)),
+  'set-res-inferno': () => debugSetResource('inferno', parseInt($('dbg-res-inferno').value)),
+  'set-res-legendary': () => debugSetResource('legendary', parseInt($('dbg-res-legendary').value)),
+  'res-100-each': () => debugSetAllResources(100),
+  'res-zero': () => debugSetAllResources(0),
+  'level-up': () => debugSetLevel(state.level + 1),
+  'level-down': () => debugSetLevel(state.level - 1),
+  'level-zero': () => debugSetLevel(0),
+  'level-10': () => debugSetLevel(10),
+  'level-20': () => debugSetLevel(20),
+  'level-max': () => debugSetLevel(MAX_LEVEL),
+  'gold-1m': () => debugSetGold(state.gold + 1000000),
+  'gold-100m': () => debugSetGold(state.gold + 100000000),
+  'gold-1b': () => debugSetGold(state.gold + 1000000000),
+  'gold-zero': () => debugSetGold(0),
+  'items-100': () => { state.fragments = 100; state.stones = 100; state.protections = 100; saveAndRender(); showToast('아이템 100개씩 부여', 'success'); },
+  'items-zero': () => { state.fragments = 0; state.stones = 0; state.protections = 0; state.useFragment = false; state.useStones = 0; state.useProtection = false; saveAndRender(); showToast('아이템 모두 0', 'fail'); },
+  'reset-stats': () => debugResetStats(),
+  'clear-log': () => debugClearLog(),
+  'fill-collection': () => debugFillCollection(parseInt($('dbg-fill-amount').value)),
+  'give-50-each': () => debugFillCollection(50),
+  'unlock-all': () => debugUnlockAll(),
+  'lock-all': () => debugLockAll(),
+  'clear-collection': () => debugClearCollection(),
+  'apply-collection-edits': () => debugApplyCollectionEdits(),
+  'cheat-success': () => debugSetForceNext('success'),
+  'cheat-maintain': () => debugSetForceNext('maintain'),
+  'cheat-downgrade': () => debugSetForceNext('downgrade'),
+  'cheat-destroy': () => debugSetForceNext('destroy'),
+  'cheat-clear': () => debugSetForceNext(null),
+  'export-save': () => debugExportSave(),
+  'import-save': () => $('dbg-import-file').click(),
+  'wipe-save': () => debugWipeSave(),
+  'wipe-all': () => debugWipeAll()
+};
+
+function saveAndRender() {
+  saveState();
+  render();
+  populateDebugForm();
+}
+
+function debugSetLevel(lvl) {
+  lvl = Math.max(0, Math.min(MAX_LEVEL, lvl || 0));
+  state.level = lvl;
+  // Auto-unlock all levels up to current
+  for (let i = 0; i <= lvl; i++) state.unlocked[i] = true;
+  if (lvl > state.stats.best) state.stats.best = lvl;
+  saveAndRender();
+  showToast(`레벨 → +${lvl}`, 'info');
+  playSound('click');
+}
+
+function debugSetGold(amount) {
+  state.gold = Math.max(0, amount || 0);
+  saveAndRender();
+  showToast(`골드: ${state.gold.toLocaleString()} G`, 'info');
+  playSound('cash');
+}
+
+function debugSetItem(key, amount) {
+  state[key] = Math.max(0, Math.min(999, amount || 0));
+  saveAndRender();
+  showToast(`${key}: ${state[key]}`, 'info');
+  playSound('click');
+}
+
+function debugSetResource(key, amount) {
+  if (!state.resources) state.resources = { iron: 0, steel: 0, mystic: 0, crystal: 0, inferno: 0, legendary: 0 };
+  state.resources[key] = Math.max(0, amount || 0);
+  saveAndRender();
+  showToast(`${key}: ${state.resources[key].toLocaleString()}`, 'info');
+  playSound('click');
+}
+
+function debugSetAllResources(n) {
+  if (!state.resources) state.resources = {};
+  ['iron','steel','mystic','crystal','inferno','legendary'].forEach(k => {
+    state.resources[k] = Math.max(0, n || 0);
+  });
+  saveAndRender();
+  showToast(`자원 전체: ${n}`, 'info');
+  playSound('click');
+}
+
+function debugResetStats() {
+  if (!confirm('모든 통계를 0으로 리셋합니다. (최고 강화는 현재 레벨로 설정)')) return;
+  state.stats = {
+    attempts: 0, success: 0, fail: 0, broken: 0, sold: 0, stored: 0,
+    best: state.level, goldSpent: 0, goldEarned: 0
+  };
+  saveAndRender();
+  showToast('통계 리셋', 'info');
+  playSound('click');
+}
+
+function debugClearLog() {
+  state.log = [];
+  saveAndRender();
+  showToast('로그 청소', 'info');
+  playSound('click');
+}
+
+function debugFillCollection(n) {
+  n = Math.max(0, Math.min(999, n || 0));
+  for (let i = 1; i <= 30; i++) {
+    state.collection[i] = n;
+    state.unlocked[i] = true;
+  }
+  saveAndRender();
+  showToast(`각 단계 ${n}개씩 부여`, 'success');
+  playSound('store');
+}
+
+function debugUnlockAll() {
+  for (let i = 0; i <= 30; i++) state.unlocked[i] = true;
+  saveAndRender();
+  showToast('모두 해금', 'unlock');
+  playSound('success');
+}
+
+function debugLockAll() {
+  if (!confirm('+0 외 모든 검을 미해금 상태로 되돌립니다.')) return;
+  for (let i = 1; i <= 30; i++) state.unlocked[i] = false;
+  state.unlocked[0] = true;
+  saveAndRender();
+  showToast('+0 외 모두 잠금', 'fail');
+  playSound('click');
+}
+
+function debugClearCollection() {
+  if (!confirm('보관함의 모든 검을 비웁니다. 계속할까요?')) return;
+  for (let i = 0; i <= 30; i++) state.collection[i] = 0;
+  saveAndRender();
+  showToast('보관함 비움', 'fail');
+  playSound('click');
+}
+
+function debugApplyCollectionEdits() {
+  for (let i = 0; i <= 30; i++) {
+    const cnt = $('dbg-count-' + i);
+    const unl = $('dbg-unlock-' + i);
+    if (cnt) state.collection[i] = Math.max(0, Math.min(999, parseInt(cnt.value) || 0));
+    if (unl && i > 0) state.unlocked[i] = unl.checked;
+  }
+  state.unlocked[0] = true;
+  state.collection[0] = 0; // never store +0
+  saveAndRender();
+  showToast('보관함 변경 저장', 'success');
+  playSound('click');
+}
+
+function debugSetForceNext(value) {
+  cheats.forceNext = value;
+  updateCheatStatus();
+  showToast(value ? `다음: ${value}` : '강제 해제', 'info');
+  playSound('click');
+}
+
+function debugExportSave() {
+  const payload = {
+    state: state,
+    balance: balance,
+    exportedAt: new Date().toISOString(),
+    version: 'v4'
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sword-save-' + new Date().toISOString().replace(/[:.]/g,'-').slice(0,19) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('상태 Export 완료', 'info');
+  playSound('store');
+}
+
+function debugImportSaveFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (parsed.state) {
+        state = Object.assign(defaultState(), parsed.state);
+        saveState();
+      }
+      if (parsed.balance) {
+        balance = Object.assign(deepClone(BALANCE_DEFAULTS), parsed.balance);
+        applyBalance();
+      }
+      render();
+      populateDebugForm();
+      showToast('Import 완료', 'success');
+      playSound('success');
+    } catch (err) {
+      showToast('Import 실패: ' + err.message, 'fail');
+      playSound('fail');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function debugWipeSave() {
+  if (!confirm('게임 진행 데이터(레벨/골드/보관함/통계)를 모두 삭제합니다.\n밸런스 설정은 유지됩니다.\n계속할까요?')) return;
+  localStorage.removeItem(SAVE_KEY);
+  state = defaultState();
+  saveState();
+  render();
+  populateDebugForm();
+  showToast('게임 진행 삭제됨', 'fail');
+  playSound('destroy');
+}
+
+function debugWipeAll() {
+  if (!confirm('진행 데이터 + 밸런스 + 대장간 정보를 모두 삭제합니다.\n다음 시작 시 대장간 이름을 다시 정해야 합니다. 정말로?')) return;
+  if (SAVE_KEY) localStorage.removeItem(SAVE_KEY);
+  localStorage.removeItem(BALANCE_KEY);
+  localStorage.removeItem(FORGE_KEY);
+  localStorage.removeItem(LEGACY_SAVE_KEY);
+  resetBalance();
+  forge = null;
+  SAVE_KEY = '';
+  state = defaultState();
+  closeDebugPanel();
+  render();
+  showToast('모든 데이터 삭제됨', 'fail');
+  playSound('destroy');
+  showForgeWelcome();
+}
+
+// ----- Wire up -----
+enhanceBtn.addEventListener('click', attemptEnhance);
+sellBtn.addEventListener('click', sellSword);
+storeBtn.addEventListener('click', storeSword);
+resetBtn.addEventListener('click', resetGame);
+$('buy-stone-btn').addEventListener('click', buyStone);
+$('buy-protect1-btn').addEventListener('click', () => buyProtect(1));
+$('buy-protect10-btn').addEventListener('click', () => buyProtect(10));
+
+// Tier summon panel — click delegation
+$('summon-list').addEventListener('click', e => {
+  const row = e.target.closest('.summon-row');
+  if (!row || row.classList.contains('disabled')) return;
+  const tier = parseInt(row.dataset.tier);
+  if (!isNaN(tier)) summonTier(tier);
+});
+soundToggle.addEventListener('click', () => {
+  state.soundOn = !state.soundOn;
+  if (state.soundOn) ensureAudio();
+  playSound('click');
+  saveState(); render();
+});
+
+// Collection cell hover (tooltip) + click (action modal)
+collectionGrid.addEventListener('mousemove', e => {
+  const cell = e.target.closest('.col-cell');
+  if (cell && cell.dataset.level !== undefined) {
+    const lvl = parseInt(cell.dataset.level);
+    if (lvl !== tooltipLvl) showTooltip(lvl, e.clientX, e.clientY);
+    else positionTooltip(e.clientX, e.clientY);
+  } else {
+    hideTooltip();
+  }
+});
+collectionGrid.addEventListener('mouseleave', hideTooltip);
+collectionGrid.addEventListener('click', e => {
+  const cell = e.target.closest('.col-cell.clickable');
+  if (cell && cell.dataset.level !== undefined) {
+    showCollectionActionModal(parseInt(cell.dataset.level));
+    playSound('click');
+  }
+});
+window.addEventListener('scroll', hideTooltip, true);
+
+// Admin panel
+$('admin-toggle').addEventListener('click', openAdminPanel);
+$('admin-close').addEventListener('click', closeAdminPanel);
+$('ad-apply').addEventListener('click', applyAdminForm);
+$('ad-reset').addEventListener('click', adminReset);
+$('ad-export').addEventListener('click', exportBalanceConfig);
+$('ad-import').addEventListener('click', triggerImport);
+$('ad-import-file').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) handleImportFile(f);
+  e.target.value = '';
+});
+document.querySelectorAll('.admin-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.admin-tabpanel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    $('admin-tab-' + tab.dataset.tab).classList.add('active');
+    playSound('click');
+  });
+});
+
+// Show admin + debug buttons when URL has ?admin=1
+if (new URLSearchParams(location.search).has('admin')) {
+  $('admin-toggle').classList.add('show');
+  $('debug-toggle').classList.add('show');
+}
+
+// Debug panel events
+$('debug-toggle').addEventListener('click', openDebugPanel);
+$('debug-close').addEventListener('click', closeDebugPanel);
+$('dbg-import-file').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) debugImportSaveFile(f);
+  e.target.value = '';
+});
+document.querySelectorAll('.debug-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.debug-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.debug-tabpanel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    $('debug-tab-' + tab.dataset.dtab).classList.add('active');
+    playSound('click');
+  });
+});
+// Debug action delegation
+$('debug-panel').addEventListener('click', e => {
+  const btn = e.target.closest('[data-daction]');
+  if (!btn) return;
+  const action = btn.dataset.daction;
+  const handler = debugActions[action];
+  if (handler) handler();
+});
+// Cheat toggles
+$('dbg-cheat-gold').addEventListener('change', e => {
+  cheats.infiniteGold = e.target.checked;
+  showToast(`무한 골드 ${e.target.checked ? 'ON' : 'OFF'}`, 'info');
+  render();
+});
+$('dbg-cheat-items').addEventListener('change', e => {
+  cheats.infiniteItems = e.target.checked;
+  showToast(`무한 아이템 ${e.target.checked ? 'ON' : 'OFF'}`, 'info');
+  render();
+});
+$('dbg-cheat-materials').addEventListener('change', e => {
+  cheats.infiniteMaterials = e.target.checked;
+  showToast(`무한 재료 ${e.target.checked ? 'ON' : 'OFF'}`, 'info');
+  render();
+});
+
+// Action modal close button
+$('action-modal-cancel').addEventListener('click', () => {
+  closeActionModal();
+  playSound('click');
+});
+// Click on modal backdrop closes
+$('action-modal-bg').addEventListener('click', e => {
+  if (e.target === $('action-modal-bg')) closeActionModal();
+});
+
+document.addEventListener('keydown', e => {
+  // ESC closes panels in priority order
+  if (e.key === 'Escape') {
+    if ($('debug-panel').classList.contains('show')) {
+      closeDebugPanel();
+      return;
+    }
+    if ($('admin-panel').classList.contains('show')) {
+      closeAdminPanel();
+      return;
+    }
+    if ($('action-modal-bg').classList.contains('show')) {
+      closeActionModal();
+      return;
+    }
+  }
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+  if (e.key === ' ' || e.key === 'Enter') {
+    if (!busy && state.level < MAX_LEVEL) {
+      e.preventDefault();
+      attemptEnhance();
+    }
+  }
+});
+
+// Resume audio context on first user interaction
+document.addEventListener('click', () => { if (state.soundOn) ensureAudio(); }, { once: true });
+
+// ============================================================
+//  FORGE WELCOME / RENAME MODAL HANDLERS
+// ============================================================
+function renderForgeListInModal() {
+  const list = $('forge-list');
+  const section = $('forge-list-section');
+  const orDivider = $('forge-or');
+  const forges = listForges();
+  if (forges.length === 0) {
+    section.style.display = 'none';
+    orDivider.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  orDivider.style.display = '';
+  list.innerHTML = forges.map(f => {
+    const lastTxt = formatRelativeTime(f.lastPlayedAt);
+    const sName = String(f.name).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+    return `
+      <div class="forge-row" data-name="${sName}">
+        <div class="info">
+          <span class="name">${sName}</span>
+          <span class="meta">최근 ${lastTxt} · 최고 +${f.bestLevel} · ${f.gold.toLocaleString()} G</span>
+        </div>
+        <button class="enter-btn" data-action="enter">입장</button>
+        <button class="delete-btn" data-action="delete">삭제</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function showForgeWelcome(allowCancel) {
+  const hasLegacy = !!localStorage.getItem(LEGACY_SAVE_KEY);
+  $('forge-migration-notice').style.display = hasLegacy ? 'block' : 'none';
+  $('forge-welcome-name').value = '';
+  $('forge-welcome-err').textContent = '';
+  renderForgeListInModal();
+  $('forge-welcome-close').style.display = allowCancel ? 'inline-block' : 'none';
+  $('forge-welcome-bg').classList.add('show');
+  setTimeout(() => $('forge-welcome-name').focus(), 50);
+}
+function closeForgeWelcome() { $('forge-welcome-bg').classList.remove('show'); }
+
+function enterForge(name) {
+  if (!switchForge(name)) {
+    $('forge-welcome-err').textContent = '대장간 로드 실패';
+    return;
+  }
+  closeForgeWelcome();
+  bootGame();
+  showToast(`${forge.name} 입장`, 'success');
+  playSound('success');
+}
+
+function handleDeleteForgeFromList(name) {
+  if (!confirm(`'${name}' 대장간을 삭제할까요?\n해당 진행 상태가 영구 삭제됩니다 (되돌릴 수 없음).`)) return;
+  deleteForge(name);
+  renderForgeListInModal();
+  showToast(`${name} 삭제됨`, 'fail');
+}
+
+function handleForgeWelcomeConfirm() {
+  const raw = $('forge-welcome-name').value;
+  const valid = validateForgeName(raw);
+  if (!valid) {
+    $('forge-welcome-err').textContent = '이름은 1~16자, 공백/제어문자만은 안 됩니다.';
+    return;
+  }
+  if (!createForge(valid)) {
+    $('forge-welcome-err').textContent = '대장간 생성 실패';
+    return;
+  }
+  closeForgeWelcome();
+  bootGame();
+  showToast(`${forge.name} 개점!`, 'success');
+  playSound('success');
+}
+
+function showForgeRename() {
+  if (!forge) return;
+  $('forge-rename-current').textContent = forge.name;
+  $('forge-rename-name').value = forge.name;
+  $('forge-rename-err').textContent = '';
+  $('forge-rename-bg').classList.add('show');
+  setTimeout(() => { $('forge-rename-name').focus(); $('forge-rename-name').select(); }, 50);
+}
+
+function hideForgeRename() {
+  $('forge-rename-bg').classList.remove('show');
+}
+
+function handleForgeRenameConfirm() {
+  const raw = $('forge-rename-name').value;
+  const valid = validateForgeName(raw);
+  if (!valid) {
+    $('forge-rename-err').textContent = '이름은 1~16자, 공백/제어문자만은 안 됩니다.';
+    return;
+  }
+  if (forge && valid === forge.name) {
+    hideForgeRename();
+    return;
+  }
+  setupForge(valid);
+  hideForgeRename();
+  render();
+  populateDebugForm && populateDebugForm();
+  showToast(`이름 변경: ${forge.name}`, 'success');
+  playSound('store');
+  logMsg(`🔥 대장간 이름 변경: ${forge.name}`, 'info');
+  saveState();
+}
+
+// Wire up welcome/rename modal handlers
+$('forge-welcome-confirm').addEventListener('click', handleForgeWelcomeConfirm);
+$('forge-welcome-close').addEventListener('click', closeForgeWelcome);
+$('forge-welcome-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleForgeWelcomeConfirm();
+});
+$('forge-list').addEventListener('click', e => {
+  const row = e.target.closest('.forge-row');
+  if (!row) return;
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const name = row.dataset.name;
+  if (btn.dataset.action === 'enter') enterForge(name);
+  else if (btn.dataset.action === 'delete') handleDeleteForgeFromList(name);
+});
+$('forge-rename-confirm').addEventListener('click', handleForgeRenameConfirm);
+$('forge-rename-cancel').addEventListener('click', hideForgeRename);
+$('forge-rename-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleForgeRenameConfirm();
+  if (e.key === 'Escape') hideForgeRename();
+});
+$('forge-switch-btn').addEventListener('click', () => {
+  showForgeWelcome(true);
+  playSound('click');
+});
+$('forge-rename-btn').addEventListener('click', () => {
+  showForgeRename();
+  playSound('click');
+});
+
+// ============================================================
+//  BOOT
+// ============================================================
+function bootGame() {
+  state = loadState();
+  if (state.log.length === 0) {
+    logMsg(`★ ${forge && forge.name ? forge.name : '대장간'} 모험 시작! 1,000,000 골드로 검을 강화하세요.`, 'info');
+    saveState();
+  }
+  // Auto-resolve any rentals whose timer expired (offline progression)
+  const result = resolveRentals();
+  if (result.didChange) {
+    const succ = result.resolved.filter(r => r.outcome === 'success').length;
+    const fail = result.resolved.filter(r => r.outcome === 'fail').length;
+    const parts = [];
+    if (succ > 0) parts.push(`성공 ${succ}`);
+    if (fail > 0) parts.push(`실패 ${fail}`);
+    if (parts.length) {
+      setTimeout(() => showToast(`귀환: ${parts.join(', ')}`, succ > 0 ? 'success' : 'destroy'), 400);
+      try { playSound(succ > 0 ? 'cash' : 'destroy'); } catch (e) {}
+    }
+  }
+  render();
+}
+
+if (forge && forge.name) {
+  SAVE_KEY = SAVE_KEY_PREFIX + forge.name;
+  bootGame();
+} else {
+  // No forge — show welcome (will detect legacy data and offer migration)
+  render(); // render once with default state so background doesn't look broken
+  showForgeWelcome();
+}
+
+</script>
+</body>
+</html>

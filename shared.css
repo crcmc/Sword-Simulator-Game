@@ -1,0 +1,527 @@
+/* ============================================================
+   shared.css — Sword Enhancement common styles
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Galmuri11&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-dark: #0d0a18;
+  --bg-mid: #1c1530;
+  --bg-light: #2a1f4a;
+  --panel: #14101e;
+  --panel-border: #4a3870;
+  --accent: #ffd700;
+  --accent-2: #ff6b35;
+  --success: #4ade80;
+  --fail: #ef4444;
+  --warn: #fbbf24;
+  --info: #93c5fd;
+  --teal: #5eead4;
+  --pink: #f0abfc;
+  --text: #e8e3ff;
+  --text-dim: #9b8fbf;
+}
+
+html, body {
+  height: 100%;
+  background:
+    radial-gradient(ellipse at top, var(--bg-light) 0%, var(--bg-dark) 60%),
+    var(--bg-dark);
+  color: var(--text);
+  font-family: 'Galmuri11', 'Press Start 2P', monospace;
+  overflow-x: hidden;
+  image-rendering: pixelated;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 3px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ===== NAV BAR ===== */
+.nav-bar {
+  position: relative;
+  z-index: 5;
+  background: linear-gradient(180deg, var(--panel) 0%, #0a0716 100%);
+  border-bottom: 2px solid var(--panel-border);
+  padding: 8px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+.nav-link {
+  color: var(--text-dim);
+  text-decoration: none;
+  padding: 6px 14px;
+  border: 2px solid transparent;
+  font-family: inherit;
+  letter-spacing: 1px;
+  transition: all 0.1s;
+}
+.nav-link:hover { color: var(--text); border-color: var(--panel-border); }
+.nav-link.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(255,215,0,0.05);
+}
+.nav-spacer { flex: 1; }
+.nav-info {
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.nav-info .v {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  margin-left: 4px;
+}
+.nav-info .v.gold { color: var(--accent); }
+
+/* ===== PANEL ===== */
+.panel {
+  background: linear-gradient(180deg, var(--panel) 0%, #0a0716 100%);
+  border: 3px solid var(--panel-border);
+  padding: 16px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05),
+    0 0 0 3px var(--bg-dark), 0 0 20px rgba(74, 56, 112, 0.4);
+  position: relative;
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  top: -3px; left: -3px; right: -3px; bottom: -3px;
+  background:
+    linear-gradient(45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) top left / 12px 12px no-repeat,
+    linear-gradient(-45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) top right / 12px 12px no-repeat,
+    linear-gradient(-45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) bottom left / 12px 12px no-repeat,
+    linear-gradient(45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) bottom right / 12px 12px no-repeat;
+  pointer-events: none;
+}
+.panel h2 {
+  font-size: 12px;
+  color: var(--accent);
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+  text-shadow: 2px 2px 0 #000;
+  border-bottom: 2px dashed var(--panel-border);
+  padding-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.panel h2 .meta {
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 0;
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 14px 8px;
+  background: linear-gradient(180deg, #3a2a5e 0%, #1f1538 100%);
+  color: var(--text);
+  border: 3px solid var(--panel-border);
+  border-bottom-width: 5px;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 #000;
+  letter-spacing: 1px;
+  transition: all 0.08s;
+  image-rendering: pixelated;
+}
+.btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #4a3878 0%, #2a1f4a 100%);
+  transform: translateY(-1px);
+}
+.btn:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 3px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn.primary {
+  background: linear-gradient(180deg, #d97706 0%, #92400e 100%);
+  border-color: var(--accent);
+  color: #fff;
+  font-size: 16px;
+  padding: 18px;
+}
+.btn.primary:hover:not(:disabled) { background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%); }
+.btn.danger { border-color: #7f1d1d; }
+.btn.success-btn { border-color: #166534; background: linear-gradient(180deg, #15803d 0%, #14532d 100%); }
+.btn .sub-text { display: block; font-size: 10px; color: rgba(255,255,255,0.7); margin-top: 3px; }
+
+/* ===== TOAST ===== */
+.toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background: var(--panel);
+  border: 3px solid var(--accent);
+  padding: 16px 32px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  z-index: 100;
+  transition: transform 0.4s cubic-bezier(0.5, 1.6, 0.4, 1);
+  text-shadow: 2px 2px 0 #000;
+  pointer-events: none;
+  letter-spacing: 2px;
+  text-align: center;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.success { color: var(--success); border-color: var(--success); }
+.toast.fail { color: var(--warn); border-color: var(--warn); }
+.toast.destroy { color: var(--fail); border-color: var(--fail); }
+.toast.sell { color: var(--teal); border-color: var(--teal); }
+.toast.unlock { color: var(--pink); border-color: var(--pink); }
+.toast.info { color: var(--info); border-color: var(--info); }
+
+/* ===== MODAL ===== */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal-bg.show { display: flex; }
+.modal {
+  background: var(--panel);
+  border: 3px solid var(--accent);
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+}
+.modal h3 {
+  color: var(--accent);
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+.modal p {
+  font-size: 12px;
+  margin-bottom: 16px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+.modal-actions { display: flex; gap: 8px; }
+.modal-actions .btn { flex: 1; font-size: 11px; padding: 10px; }
+
+/* ===== FORGE WELCOME / RENAME MODAL ===== */
+.forge-modal-bg {
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(20,16,30,0.95) 0%, rgba(0,0,0,0.97) 80%);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 400;
+}
+.forge-modal-bg.show { display: flex; }
+.forge-card {
+  background: linear-gradient(180deg, var(--panel) 0%, #0a0716 100%);
+  border: 3px solid var(--accent);
+  padding: 36px 32px 28px;
+  max-width: 460px;
+  width: 92%;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(255,215,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.05);
+  position: relative;
+}
+.forge-card::before {
+  content: '';
+  position: absolute;
+  top: -3px; left: -3px; right: -3px; bottom: -3px;
+  background:
+    linear-gradient(45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) top left / 16px 16px no-repeat,
+    linear-gradient(-45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) top right / 16px 16px no-repeat,
+    linear-gradient(-45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) bottom left / 16px 16px no-repeat,
+    linear-gradient(45deg, transparent 48%, var(--accent) 48% 52%, transparent 52%) bottom right / 16px 16px no-repeat;
+  pointer-events: none;
+}
+.forge-card h2 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  color: var(--accent);
+  margin-bottom: 18px;
+  letter-spacing: 2px;
+  text-shadow: 3px 3px 0 #000, 0 0 20px rgba(255,215,0,0.5);
+}
+.forge-card .desc { font-size: 13px; color: var(--text); margin-bottom: 8px; line-height: 1.6; }
+.forge-card .hint { font-size: 11px; color: var(--text-dim); margin-bottom: 16px; }
+.forge-card input[type=text] {
+  width: 100%;
+  background: rgba(0,0,0,0.6);
+  border: 2px solid var(--panel-border);
+  color: var(--accent);
+  font-family: 'Galmuri11', monospace;
+  font-size: 16px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  text-align: center;
+  outline: none;
+  letter-spacing: 1px;
+}
+.forge-card input[type=text]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(255,215,0,0.3);
+}
+.forge-card .err-msg {
+  color: var(--fail);
+  font-size: 11px;
+  margin-bottom: 10px;
+  min-height: 16px;
+}
+.forge-card .forge-btn {
+  width: 100%;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 12px;
+  background: linear-gradient(180deg, #d97706 0%, #92400e 100%);
+  color: #fff;
+  border: 3px solid var(--accent);
+  border-bottom-width: 5px;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 #000;
+  letter-spacing: 2px;
+}
+.forge-card .forge-btn:hover { background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%); }
+.forge-card .forge-btn:active { transform: translateY(2px); border-bottom-width: 3px; }
+
+/* ===== COLLECTION CELL ===== */
+.col-cell {
+  position: relative;
+  aspect-ratio: 0.85;
+  background: rgba(0,0,0,0.45);
+  border: 2px solid #2a2040;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 2px 2px 2px;
+  cursor: help;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.col-cell:hover { transform: translateY(-2px); }
+.col-cell.unlocked { border-color: #4a3870; }
+.col-cell.unlocked.has-count { border-color: var(--accent); box-shadow: 0 0 6px rgba(255,215,0,0.4); }
+.col-cell.locked { background: rgba(0,0,0,0.6); }
+.col-cell.clickable { cursor: pointer; }
+.col-cell.clickable:hover {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 12px rgba(255,215,0,0.6) !important;
+  transform: translateY(-3px);
+}
+.col-cell.selected {
+  border-color: var(--success) !important;
+  box-shadow: 0 0 12px rgba(74,222,128,0.6) !important;
+}
+.col-lvl {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: var(--text-dim);
+  text-shadow: 1px 1px 0 #000;
+}
+.col-cell.unlocked.has-count .col-lvl { color: var(--accent); }
+.col-sword {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+}
+.col-sword svg { width: 100%; height: 100%; max-height: 100%; }
+.col-count {
+  position: absolute;
+  bottom: 1px;
+  right: 2px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  color: var(--accent);
+  text-shadow: 1px 1px 0 #000;
+  background: rgba(0,0,0,0.85);
+  padding: 1px 3px;
+  border: 1px solid var(--accent);
+  line-height: 1;
+}
+
+/* ===== PAGE TITLE BAR ===== */
+.page-title {
+  text-align: center;
+  margin: 0 auto 14px;
+  padding: 24px 20px 0;
+  max-width: 1200px;
+}
+.page-title h1 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 22px;
+  color: var(--accent);
+  text-shadow: 3px 3px 0 #000, -1px -1px 0 var(--accent-2), 0 0 20px rgba(255, 215, 0, 0.4);
+  letter-spacing: 2px;
+}
+.page-title .sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+.forge-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--panel-border);
+  padding: 5px 12px;
+}
+.forge-display .forge-icon { font-size: 13px; }
+.forge-display .forge-name {
+  font-family: 'Galmuri11', monospace;
+  color: var(--accent);
+  letter-spacing: 1px;
+  font-size: 12px;
+}
+.forge-display .forge-rename-btn {
+  background: transparent;
+  border: 1px solid rgba(155, 143, 191, 0.4);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 10px;
+  padding: 2px 7px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.forge-display .forge-rename-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Multi-forge selector list (inside welcome modal) */
+.forge-list-section {
+  margin-bottom: 14px;
+  text-align: left;
+}
+.forge-list-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  text-align: left;
+}
+.forge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.forge-row {
+  background: rgba(0,0,0,0.4);
+  border: 2px solid var(--panel-border);
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 6px;
+  align-items: center;
+}
+.forge-row .info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  min-width: 0;
+}
+.forge-row .name {
+  font-family: 'Galmuri11', monospace;
+  color: var(--accent);
+  font-size: 13px;
+  letter-spacing: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.forge-row .meta {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+.forge-row .enter-btn {
+  background: linear-gradient(180deg, #d97706 0%, #92400e 100%);
+  color: #fff;
+  border: 2px solid var(--accent);
+  border-bottom-width: 4px;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.forge-row .enter-btn:hover { background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%); }
+.forge-row .delete-btn {
+  background: rgba(0,0,0,0.4);
+  color: #fca5a5;
+  border: 1px solid #b91c1c;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.forge-row .delete-btn:hover { background: #b91c1c; color: #fff; }
+.forge-or {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 10px;
+  margin: 14px 0 8px;
+  letter-spacing: 1px;
+}
+.forge-or::before, .forge-or::after {
+  content: '';
+  display: inline-block;
+  width: 30px;
+  height: 1px;
+  background: var(--panel-border);
+  vertical-align: middle;
+  margin: 0 8px;
+}
+.forge-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.forge-actions .forge-btn { flex: 1; }
+.forge-card .forge-btn.cancel {
+  background: linear-gradient(180deg, #3a2a5e 0%, #1f1538 100%);
+  color: var(--text);
+  border: 3px solid var(--panel-border);
+  border-bottom-width: 5px;
+}
+.forge-card .forge-btn.cancel:hover {
+  background: linear-gradient(180deg, #4a3878 0%, #2a1f4a 100%);
+}
+
+.nav-switch {
+  background: transparent;
+  border: 1px solid rgba(155, 143, 191, 0.4);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 2px 7px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.nav-switch:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

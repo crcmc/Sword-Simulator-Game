@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>검 대여소 - Sword Rental</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .rental-wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 1080px) {
+    .rental-wrap { grid-template-columns: 1fr; }
+  }
+  .rental-col { display: flex; flex-direction: column; }
+
+  /* Collection grid */
+  .rental-collection {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .rental-collection .col-cell { aspect-ratio: 0.9; }
+  .rental-collection .col-cell.empty {
+    background: rgba(0,0,0,0.2);
+    border: 2px dashed #2a2040;
+    color: var(--text-dim);
+    cursor: default;
+    font-size: 10px;
+    padding: 8px;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    grid-column: span 3;
+  }
+
+  /* Sword/Hero preview split */
+  .preview-split {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .preview-half {
+    flex: 1;
+    background: rgba(0,0,0,0.3);
+    border: 2px solid var(--panel-border);
+    padding: 8px;
+    text-align: center;
+    min-height: 145px;
+    display: flex;
+    flex-direction: column;
+  }
+  .preview-half.has-sword { border-top-color: var(--accent); }
+  .preview-half.has-hero { border-top-color: var(--success); }
+  .preview-half .preview-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+  .preview-half .preview-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    font-size: 11px;
+  }
+  .preview-half .preview-empty {
+    color: var(--text-dim);
+    font-style: italic;
+    font-size: 10px;
+  }
+  .preview-half .preview-name {
+    font-family: 'Galmuri11', monospace;
+    color: var(--accent);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+  .preview-half .preview-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  /* Dungeon target box */
+  .dungeon-target {
+    background: rgba(0,0,0,0.4);
+    border: 2px solid var(--panel-border);
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    font-size: 11px;
+  }
+  .dungeon-target.empty {
+    color: var(--text-dim);
+    text-align: center;
+    font-style: italic;
+  }
+  .dungeon-target .dt-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+  }
+  .dungeon-target .dt-row .label { color: var(--text-dim); }
+  .dungeon-target .dt-row .v {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--accent);
+  }
+  .dungeon-target .dt-row .v.success { color: var(--success); }
+  .dungeon-target .dt-row .v.fail { color: var(--fail); }
+  .dungeon-target .dt-row .v.warn { color: var(--warn); }
+
+  /* Applicant cards */
+  .applicant-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 380px;
+    overflow-y: auto;
+  }
+  .applicant-card {
+    background: rgba(0,0,0,0.3);
+    border: 2px solid var(--panel-border);
+    border-bottom-width: 4px;
+    padding: 7px 10px;
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 8px;
+    align-items: center;
+    font-size: 11px;
+    transition: all 0.1s;
+  }
+  .applicant-card .view-btn {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--text-dim);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 9px;
+    padding: 4px 8px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+    white-space: nowrap;
+    transition: all 0.1s;
+  }
+  .applicant-card .view-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(255,215,0,0.1);
+  }
+  .applicant-card:hover {
+    background: rgba(0,0,0,0.5);
+    transform: translateY(-1px);
+  }
+  .applicant-card.selected {
+    border-color: var(--success);
+    background: rgba(74, 222, 128, 0.08);
+  }
+  .applicant-card .name {
+    font-family: 'Galmuri11', monospace;
+    color: var(--accent);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .applicant-card .greedy {
+    color: var(--warn);
+    font-size: 10px;
+    margin-left: 4px;
+  }
+  .tier-badge {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 3px 6px;
+    letter-spacing: 0.5px;
+    line-height: 1;
+  }
+  .tier-badge[data-tier="0"] { background: rgba(205,213,224,0.15); color: #cdd5e0; border: 1px solid #cdd5e0; }
+  .tier-badge[data-tier="1"] { background: rgba(155,212,255,0.15); color: #9bd4ff; border: 1px solid #9bd4ff; }
+  .tier-badge[data-tier="2"] { background: rgba(77,109,255,0.15); color: #4d6dff; border: 1px solid #4d6dff; }
+  .tier-badge[data-tier="3"] { background: rgba(192,96,255,0.15); color: #c060ff; border: 1px solid #c060ff; }
+  .tier-badge[data-tier="4"] { background: rgba(255,80,96,0.15); color: #ff5060; border: 1px solid #ff5060; }
+  .tier-badge[data-tier="5"] { background: rgba(255,215,0,0.15); color: #ffd700; border: 1px solid #ffd700; }
+  .applicant-card .pay {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--success);
+  }
+  .applicant-empty {
+    color: var(--text-dim);
+    font-size: 11px;
+    text-align: center;
+    padding: 16px 8px;
+    font-style: italic;
+  }
+
+  /* Applicant detail modal */
+  .applicant-modal {
+    max-width: 480px;
+    text-align: left;
+  }
+  .applicant-modal h3 {
+    text-align: center;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .applicant-modal .hero-portrait {
+    text-align: center;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: rgba(0,0,0,0.3);
+    border: 2px solid var(--panel-border);
+  }
+  .applicant-modal .hero-portrait .hp-name {
+    font-family: 'Galmuri11', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .applicant-modal .hero-portrait .hp-tier {
+    margin-top: 6px;
+    display: inline-block;
+  }
+  .applicant-modal .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    margin: 12px 0;
+  }
+  .applicant-modal .stat-cell {
+    background: rgba(0,0,0,0.3);
+    padding: 8px 4px;
+    text-align: center;
+    border: 1px solid #2a2040;
+  }
+  .applicant-modal .stat-cell .label {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+  .applicant-modal .stat-cell .v {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    margin-top: 4px;
+  }
+  .applicant-modal .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: rgba(0,0,0,0.25);
+    margin: 4px 0;
+    font-size: 11px;
+  }
+  .applicant-modal .info-row .k { color: var(--text-dim); }
+  .applicant-modal .info-row .v {
+    font-family: 'Galmuri11', monospace;
+    color: var(--text);
+  }
+  .applicant-modal .motivation {
+    background: rgba(192,96,255,0.1);
+    border-left: 3px solid #c060ff;
+    padding: 8px 12px;
+    font-style: italic;
+    color: var(--text);
+    margin: 12px 0;
+    font-size: 11px;
+  }
+  .applicant-modal .summary {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--panel-border);
+    padding: 8px 12px;
+    margin: 12px 0 8px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .applicant-modal .summary .key { color: var(--text-dim); }
+  .applicant-modal .summary .pos { color: var(--success); }
+  .applicant-modal .summary .neg { color: var(--fail); }
+  .applicant-modal .summary .warn { color: var(--warn); }
+
+  /* Active rental rows */
+  .rental-list { display: flex; flex-direction: column; gap: 6px; max-height: 480px; overflow-y: auto; }
+  .rental-row {
+    background: rgba(0,0,0,0.3);
+    border: 2px solid var(--panel-border);
+    padding: 8px 10px;
+    font-size: 11px;
+    position: relative;
+  }
+  .rental-row.dead {
+    border-color: var(--fail);
+    background: rgba(239,68,68,0.05);
+  }
+  .rental-row .top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .rental-row .hero {
+    color: var(--accent);
+    font-family: 'Galmuri11', monospace;
+    font-size: 12px;
+  }
+  .rental-row .badge {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    padding: 2px 5px;
+    background: rgba(255,215,0,0.15);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+  .rental-row.dead .badge {
+    background: rgba(239,68,68,0.15);
+    border-color: var(--fail);
+    color: var(--fail);
+  }
+  .rental-row .info {
+    color: var(--text-dim);
+    font-size: 10px;
+    line-height: 1.5;
+  }
+  .rental-row .progress-bar {
+    height: 8px;
+    background: #000;
+    border: 1px solid #333;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+  .rental-row .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success) 0%, var(--accent) 100%);
+    transition: width 0.5s linear;
+  }
+  .rental-row .countdown {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--info);
+    margin-top: 4px;
+    text-align: right;
+  }
+  .empty-msg {
+    color: var(--text-dim);
+    font-size: 11px;
+    text-align: center;
+    padding: 16px 8px;
+    font-style: italic;
+  }
+  .stats-summary {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--panel-border);
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-size: 11px;
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-dim);
+  }
+  .stats-summary .v {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: var(--accent);
+  }
+</style>
+</head>
+<body>
+
+<header class="nav-bar">
+  <a href="sword-enhancement.html" class="nav-link">🔥 대장간</a>
+  <a href="sword-rental.html" class="nav-link active">⚔ 검 대여소</a>
+  <a href="sword-dungeon.html" class="nav-link">🏰 던전</a>
+  <span class="nav-spacer"></span>
+  <span class="nav-info">
+    🔥 <span id="nav-forge">—</span>
+    <button class="nav-switch" id="nav-switch-btn" title="다른 대장간 선택">⇄</button>
+    <span>GOLD <span class="v gold" id="nav-gold">0</span></span>
+    <span>활성 <span class="v" id="nav-active">0</span></span>
+  </span>
+</header>
+
+<div class="page-title">
+  <h1>⚔ 검 대여소</h1>
+  <div class="sub">검을 골라두면 용사들이 대여 신청을 합니다. 마음에 드는 용사를 선택해 출정시키세요.</div>
+</div>
+
+<div class="rental-wrap">
+  <!-- LEFT: Collection -->
+  <div class="rental-col">
+    <div class="panel">
+      <h2>보관함 <span class="meta" id="rental-collection-summary">0개</span></h2>
+      <div class="rental-collection" id="rental-collection"></div>
+    </div>
+  </div>
+
+  <!-- CENTER: Preview + Applicants -->
+  <div class="rental-col">
+    <div class="panel">
+      <h2>대여품 및 출정 던전</h2>
+      <div class="preview-split">
+        <div class="preview-half" id="preview-sword-half">
+          <div class="preview-label">대여 검</div>
+          <div class="preview-content" id="preview-sword">
+            <span class="preview-empty">검을 선택하세요</span>
+          </div>
+        </div>
+        <div class="preview-half" id="preview-hero-half">
+          <div class="preview-label">선택된 용사</div>
+          <div class="preview-content" id="preview-hero">
+            <span class="preview-empty">대여 신청자에서 선택</span>
+          </div>
+        </div>
+      </div>
+      <div class="dungeon-target empty" id="dungeon-target">
+        검과 용사를 모두 선택하세요
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px;">
+      <h2>대여 신청자 <span class="meta" id="applicant-summary">검 미선택</span></h2>
+      <div class="applicant-list" id="applicant-list"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Active rentals + dead -->
+  <div class="rental-col">
+    <div class="panel">
+      <h2>활성 렌탈 <span class="meta" id="active-count">0</span></h2>
+      <div class="stats-summary">
+        <span>총 시작</span><span class="v" id="stat-rentals-started">0</span>
+        <span>성공</span><span class="v" id="stat-rentals-succeeded" style="color:var(--success);">0</span>
+        <span>실패</span><span class="v" id="stat-rentals-failed" style="color:var(--fail);">0</span>
+      </div>
+      <div id="active-rentals"></div>
+    </div>
+    <div class="panel" style="margin-top:16px;">
+      <h2>사망 검 (회수 대기) <span class="meta" id="dead-count">0</span></h2>
+      <div id="dead-swords"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Applicant detail modal -->
+<div class="modal-bg" id="applicant-modal-bg">
+  <div class="modal applicant-modal">
+    <h3 id="applicant-modal-title">용사 정보</h3>
+    <div id="applicant-modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn" id="applicant-close">닫기</button>
+      <button class="btn danger" id="applicant-reject">반려</button>
+      <button class="btn primary" id="applicant-confirm">계약</button>
+    </div>
+  </div>
+</div>
+
+<!-- Forge welcome / selector -->
+<div class="forge-modal-bg" id="forge-welcome-bg">
+  <div class="forge-card">
+    <h2>🔥 대장간 선택 🔥</h2>
+    <div class="forge-list-section" id="forge-list-section" style="display:none;">
+      <div class="forge-list-label">저장된 대장간</div>
+      <div class="forge-list" id="forge-list"></div>
+    </div>
+    <div class="forge-or" id="forge-or" style="display:none;">또는</div>
+    <div class="desc">새 대장간 이름을 정해주세요.</div>
+    <div class="hint">한글/영문/숫자/공백, 1~16자</div>
+    <input type="text" id="forge-welcome-name" maxlength="16" placeholder="예: Baker의 대장간">
+    <div class="err-msg" id="forge-welcome-err"></div>
+    <div class="forge-actions">
+      <button class="forge-btn cancel" id="forge-welcome-close" style="display:none;">닫기</button>
+      <button class="forge-btn" id="forge-welcome-confirm">새 대장간 개설</button>
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+let selectedSwordLevel = -1;
+let selectedApplicantId = null;
+let pendingApplicantId = null;
+
+function selectedApplicant() {
+  if (!selectedApplicantId) return null;
+  return (state.applicants || []).find(a => a.id === selectedApplicantId);
+}
+
+// ============================================================
+//  RENDER
+// ============================================================
+function render() {
+  $('nav-forge').textContent = forge ? forge.name : '—';
+  $('nav-gold').textContent = (state.gold || 0).toLocaleString();
+  $('nav-active').textContent = (state.rentals || []).length;
+
+  renderCollection();
+  renderPreviewSword();
+  renderApplicants();
+  renderPreviewHero();
+  renderDungeonTarget();
+  renderActiveRentals();
+  renderDeadSwords();
+
+  $('stat-rentals-started').textContent = state.stats.rentalsStarted || 0;
+  $('stat-rentals-succeeded').textContent = state.stats.rentalsSucceeded || 0;
+  $('stat-rentals-failed').textContent = state.stats.rentalsFailed || 0;
+}
+
+function renderCollection() {
+  const grid = $('rental-collection');
+  let html = '';
+  let totalCount = 0;
+  for (let lvl = 1; lvl <= 30; lvl++) {
+    const count = state.collection[lvl] || 0;
+    if (count === 0) continue;
+    totalCount += count;
+    const isUnlocked = !!state.unlocked[lvl];
+    const svg = buildSwordSVG(lvl, { silhouette: !isUnlocked, width: 60 });
+    const sel = (lvl === selectedSwordLevel) ? ' selected' : '';
+    html += `
+      <div class="col-cell unlocked has-count clickable${sel}" data-level="${lvl}">
+        <div class="col-lvl">+${lvl}</div>
+        <div class="col-sword">${svg}</div>
+        <div class="col-count">${count}</div>
+      </div>
+    `;
+  }
+  if (html === '') {
+    html = '<div class="col-cell empty">보관함이 비어있어요.<br>대장간에서 검을 보관하거나 소환해 주세요.</div>';
+  }
+  grid.innerHTML = html;
+  $('rental-collection-summary').textContent = `${totalCount}개`;
+}
+
+function renderPreviewSword() {
+  const halfBox = $('preview-sword-half');
+  const box = $('preview-sword');
+  if (selectedSwordLevel < 1) {
+    halfBox.classList.remove('has-sword');
+    box.innerHTML = '<span class="preview-empty">검을 선택하세요</span>';
+    return;
+  }
+  halfBox.classList.add('has-sword');
+  const name = state.unlocked[selectedSwordLevel] ? SWORD_NAMES[selectedSwordLevel] : '???';
+  const tier = getTier(selectedSwordLevel);
+  const tierColor = TIER_COLORS[tier];
+  const count = state.collection[selectedSwordLevel] || 0;
+  box.innerHTML = `
+    <div>${buildSwordSVG(selectedSwordLevel, { width: 56 })}</div>
+    <div class="preview-name" style="color:${tierColor}">+${selectedSwordLevel} ${name}</div>
+    <div class="preview-meta">티어 ${tier} · 보관 ${count}개</div>
+  `;
+}
+
+function renderPreviewHero() {
+  const halfBox = $('preview-hero-half');
+  const box = $('preview-hero');
+  const a = selectedApplicant();
+  if (!a) {
+    halfBox.classList.remove('has-hero');
+    box.innerHTML = '<span class="preview-empty">대여 신청자에서 선택</span>';
+    return;
+  }
+  halfBox.classList.add('has-hero');
+  const tierColor = TIER_COLORS[a.tier];
+  box.innerHTML = `
+    <div>${buildHeroSVG(-1, { size: 38, heroTier: a.tier })}</div>
+    <div class="preview-name" style="color:${tierColor}">${a.name}</div>
+    <div class="preview-meta">티어 ${a.tier} · 보수 ${a.payRate}%</div>
+  `;
+}
+
+function renderDungeonTarget() {
+  const box = $('dungeon-target');
+  if (selectedSwordLevel < 1) {
+    box.classList.add('empty');
+    box.innerHTML = '검을 먼저 선택하세요';
+    return;
+  }
+  const a = selectedApplicant();
+  if (!a) {
+    box.classList.add('empty');
+    box.innerHTML = '대여 신청자 목록에서 용사를 선택하세요';
+    return;
+  }
+  box.classList.remove('empty');
+  const tier = a.desiredDungeonTier;
+  const cfg = balance.dungeons[tier];
+  const dur = adjustedDuration(selectedSwordLevel, tier, a.tier);
+  const rate = adjustedSuccessRate(selectedSwordLevel, tier, a.tier);
+  const reward = dungeonRewards(tier, 1);
+  const heroCut = Math.floor(reward.gold * a.payRate / 100);
+  const playerGold = reward.gold - heroCut;
+  const swordGap = getTier(selectedSwordLevel) - tier;
+  const heroGap = a.tier - tier;
+  let gapNotes = [];
+  if (swordGap !== 0) gapNotes.push(`검 ${swordGap > 0 ? '+' : ''}${swordGap}티어`);
+  if (heroGap !== 0) gapNotes.push(`용사 ${heroGap > 0 ? '+' : ''}${heroGap}티어`);
+  const gapTxt = gapNotes.length ? `(${gapNotes.join(', ')})` : '';
+  const rateColor = rate >= 70 ? 'success' : rate >= 30 ? 'warn' : 'fail';
+  box.innerHTML = `
+    <div class="dt-row"><span class="label">희망 던전</span><span class="v" style="color:${TIER_COLORS[tier]}">${cfg.name} (티어 ${tier}) ${a.greedy ? '🎯' : ''}</span></div>
+    <div class="dt-row"><span class="label">조정 성공률 ${gapTxt}</span><span class="v ${rateColor}">${rate}%</span></div>
+    <div class="dt-row"><span class="label">조정 소요 시간</span><span class="v">${formatDuration(dur)}</span></div>
+    <div class="dt-row"><span class="label">예상 보수 (성공 시)</span><span class="v">+${playerGold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[tier]}</span></div>
+    <div class="dt-row"><span class="label">용사 보수 (${a.payRate}%)</span><span class="v warn">−${heroCut.toLocaleString()} G</span></div>
+  `;
+}
+
+function renderApplicants() {
+  const list = $('applicant-list');
+  const summary = $('applicant-summary');
+  if (selectedSwordLevel < 1) {
+    summary.textContent = '검 미선택';
+    list.innerHTML = '<div class="applicant-empty">먼저 보관함에서 검을 선택하세요.</div>';
+    return;
+  }
+  const apps = (state.applicants || []).filter(a => a.forSwordLevel === selectedSwordLevel)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  summary.textContent = `${apps.length}/${balance.applicantMaxPerSword || 10}`;
+  if (apps.length === 0) {
+    list.innerHTML = '<div class="applicant-empty">아직 신청한 용사가 없어요.<br>잠시 기다리면 신청자가 등장합니다.</div>';
+    return;
+  }
+  list.innerHTML = apps.map(a => {
+    const sel = (a.id === selectedApplicantId) ? ' selected' : '';
+    const greedyIcon = a.greedy ? '<span class="greedy" title="능력 이상의 던전을 노립니다">🎯</span>' : '';
+    return `
+      <div class="applicant-card${sel}" data-id="${a.id}">
+        <span class="name">${a.name}${greedyIcon}</span>
+        <span class="tier-badge" data-tier="${a.tier}">T${a.tier}</span>
+        <span class="pay">${a.payRate}%</span>
+        <button class="view-btn" data-action="view" data-id="${a.id}">신청서 확인</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderActiveRentals() {
+  const list = $('active-rentals');
+  const rentals = state.rentals || [];
+  $('active-count').textContent = rentals.length;
+  if (rentals.length === 0) {
+    list.innerHTML = '<div class="empty-msg">활성 렌탈이 없습니다</div>';
+    return;
+  }
+  const now = Date.now();
+  list.innerHTML = rentals.map(r => {
+    const dungeon = balance.dungeons[r.dungeonTier];
+    const elapsed = now - r.startTime;
+    const total = r.endTime - r.startTime;
+    const progress = Math.max(0, Math.min(1, elapsed / total));
+    const remainingMs = Math.max(0, r.endTime - now);
+    const remainingTxt = remainingMs === 0 ? '귀환 임박' : formatDuration(remainingMs);
+    const swordName = SWORD_NAMES[r.swordLevel];
+    const heroTier = (typeof r.heroTier === 'number') ? r.heroTier : null;
+    const tierBadge = heroTier !== null ? `<span class="tier-badge" data-tier="${heroTier}" style="margin-left:6px;">T${heroTier}</span>` : '';
+    return `
+      <div class="rental-row">
+        <div class="top">
+          <span class="hero">${r.heroName}${tierBadge}</span>
+          <span class="badge">+${r.swordLevel}</span>
+        </div>
+        <div class="info">
+          ${swordName} · ${dungeon.name} ${r.floor}F
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${(progress*100).toFixed(1)}%"></div>
+        </div>
+        <div class="countdown">⏳ ${remainingTxt}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderDeadSwords() {
+  const list = $('dead-swords');
+  const dead = state.deadSwords || [];
+  $('dead-count').textContent = dead.length;
+  if (dead.length === 0) {
+    list.innerHTML = '<div class="empty-msg">사망한 검이 없습니다</div>';
+    return;
+  }
+  list.innerHTML = dead.map(s => {
+    const dungeon = balance.dungeons[s.dungeonTier];
+    const swordName = SWORD_NAMES[s.swordLevel];
+    return `
+      <div class="rental-row dead">
+        <div class="top">
+          <span class="hero">${s.heroName || '???'}</span>
+          <span class="badge">+${s.swordLevel}</span>
+        </div>
+        <div class="info">
+          ${swordName} · ${dungeon.name} ${s.floor}F<br>
+          <span style="color:var(--fail);">다음 성공 시 회수</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ============================================================
+//  ACTIONS
+// ============================================================
+function selectSword(level) {
+  if ((state.collection[level] || 0) === 0) return;
+  selectedSwordLevel = level;
+  selectedApplicantId = null; // reset applicant when sword changes
+  playSound('click');
+  saveState();
+  render();
+}
+
+function showApplicantModal(applicantId) {
+  const a = (state.applicants || []).find(x => x.id === applicantId);
+  if (!a) return;
+  pendingApplicantId = applicantId;
+  selectedApplicantId = applicantId; // also update center display
+  const tierColor = TIER_COLORS[a.tier];
+  const dungeon = balance.dungeons[a.desiredDungeonTier];
+  const dur = adjustedDuration(selectedSwordLevel, a.desiredDungeonTier, a.tier);
+  const rate = adjustedSuccessRate(selectedSwordLevel, a.desiredDungeonTier, a.tier);
+  const reward = dungeonRewards(a.desiredDungeonTier, 1);
+  const heroCut = Math.floor(reward.gold * a.payRate / 100);
+  const playerGold = reward.gold - heroCut;
+
+  let summary = `<div class="key">선택 검:</div> <strong>+${selectedSwordLevel} ${SWORD_NAMES[selectedSwordLevel]}</strong> (티어 ${getTier(selectedSwordLevel)})<br>`;
+  summary += `<div class="key">희망 던전:</div> <strong>${dungeon.name}</strong> (티어 ${a.desiredDungeonTier})${a.greedy ? ' <span class="warn">🎯 능력 이상 도전</span>' : ''}<br>`;
+  summary += `<div class="key">조정 성공률:</div> <span class="${rate >= 70 ? 'pos' : rate >= 30 ? 'warn' : 'neg'}">${rate}%</span><br>`;
+  summary += `<div class="key">조정 소요:</div> ${formatDuration(dur)}<br>`;
+  summary += `<div class="key">성공 시 보수:</div> +${playerGold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[a.desiredDungeonTier]} (용사 ${heroCut.toLocaleString()} G 차감)`;
+
+  $('applicant-modal-title').textContent = `${a.name} 신청서`;
+  $('applicant-modal-body').innerHTML = `
+    <div class="hero-portrait">
+      <div>${buildHeroSVG(-1, { size: 56, heroTier: a.tier })}</div>
+      <div class="hp-name" style="color:${tierColor}">${a.name}</div>
+      <div class="hp-tier"><span class="tier-badge" data-tier="${a.tier}">티어 ${a.tier}</span></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-cell"><div class="label">힘</div><div class="v">${a.stats.strength}</div></div>
+      <div class="stat-cell"><div class="label">민첩</div><div class="v">${a.stats.agility}</div></div>
+      <div class="stat-cell"><div class="label">행운</div><div class="v">${a.stats.luck}</div></div>
+    </div>
+    <div class="info-row"><span class="k">희망 던전</span><span class="v">${dungeon.name} (티어 ${a.desiredDungeonTier})${a.greedy ? ' 🎯' : ''}</span></div>
+    <div class="info-row"><span class="k">희망 보수율</span><span class="v" style="color:var(--success);">${a.payRate}%</span></div>
+    <div class="motivation">"${a.motivation}"</div>
+    <div class="summary">${summary}</div>
+  `;
+  $('applicant-modal-bg').classList.add('show');
+  render();
+}
+
+function closeApplicantModal() {
+  $('applicant-modal-bg').classList.remove('show');
+  pendingApplicantId = null;
+}
+
+function rejectApplicant() {
+  if (!pendingApplicantId) { closeApplicantModal(); return; }
+  const a = (state.applicants || []).find(x => x.id === pendingApplicantId);
+  if (!a) { closeApplicantModal(); return; }
+  state.applicants = (state.applicants || []).filter(x => x.id !== pendingApplicantId);
+  if (selectedApplicantId === pendingApplicantId) selectedApplicantId = null;
+  closeApplicantModal();
+  saveState();
+  render();
+  playSound('click');
+  showToast(`${a.name} 신청 반려`, 'fail');
+  state.log = state.log || [];
+  state.log.push({ text: `📛 ${a.name} (T${a.tier}) 신청 반려`, type: 'fail', t: Date.now() });
+}
+
+function confirmRent() {
+  if (!pendingApplicantId) return;
+  const a = (state.applicants || []).find(x => x.id === pendingApplicantId);
+  if (!a || selectedSwordLevel < 1) {
+    showToast('선택 정보 누락', 'fail');
+    closeApplicantModal();
+    return;
+  }
+  if ((state.collection[selectedSwordLevel] || 0) === 0) {
+    showToast('검 재고 없음', 'fail');
+    closeApplicantModal();
+    return;
+  }
+
+  const lvl = selectedSwordLevel;
+  const tier = a.desiredDungeonTier;
+  const cfg = balance.dungeons[tier];
+  const adjDur = adjustedDuration(lvl, tier, a.tier);
+  const adjRate = adjustedSuccessRate(lvl, tier, a.tier);
+  const now = Date.now();
+
+  const rental = {
+    id: newRentalId(),
+    swordLevel: lvl,
+    swordTier: getTier(lvl),
+    dungeonTier: tier,
+    floor: 1,
+    heroName: a.name,
+    heroTier: a.tier,
+    heroStats: a.stats,
+    heroPayRate: a.payRate,
+    heroGreedy: a.greedy,
+    heroMotivation: a.motivation,
+    startTime: now,
+    endTime: now + adjDur,
+    adjustedSuccessRate: adjRate,
+    resolved: false,
+    outcome: null
+  };
+
+  state.collection[lvl] -= 1;
+  state.rentals = state.rentals || [];
+  state.rentals.push(rental);
+  state.applicants = (state.applicants || []).filter(x => x.id !== a.id);
+  state.stats.rentalsStarted = (state.stats.rentalsStarted || 0) + 1;
+  state.log = state.log || [];
+  state.log.push({
+    text: `⚔ ${a.name} (T${a.tier}) 이(가) +${lvl} ${SWORD_NAMES[lvl]} 들고 ${cfg.name} 1F 출정!`,
+    type: 'info',
+    t: now
+  });
+
+  closeApplicantModal();
+  // Reset selection
+  selectedApplicantId = null;
+  saveState();
+  render();
+  playSound('cash');
+  showToast(`${a.name} 출정!`, 'success');
+}
+
+function selectApplicant(applicantId) {
+  // Just highlight & preview the applicant — no modal
+  selectedApplicantId = applicantId;
+  playSound('click');
+  saveState();
+  render();
+}
+
+// ============================================================
+//  HELPERS
+// ============================================================
+function formatDuration(ms) {
+  if (ms < 0) ms = 0;
+  if (ms < 60000) return Math.ceil(ms / 1000) + '초';
+  if (ms < 3600000) return Math.floor(ms / 60000) + '분 ' + Math.floor((ms % 60000) / 1000) + '초';
+  if (ms < 86400000) return Math.floor(ms / 3600000) + '시간 ' + Math.floor((ms % 3600000) / 60000) + '분';
+  const days = Math.floor(ms / 86400000);
+  const hours = Math.floor((ms % 86400000) / 3600000);
+  return days + '일 ' + hours + '시간';
+}
+
+let toastTimer = null;
+function showToast(text, type = 'info') {
+  const t = $('toast');
+  t.className = 'toast show ' + type;
+  t.textContent = text;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// ============================================================
+//  FORGE WELCOME
+// ============================================================
+function renderForgeListInModal() {
+  const list = $('forge-list');
+  const section = $('forge-list-section');
+  const orDivider = $('forge-or');
+  const forges = listForges();
+  if (forges.length === 0) {
+    section.style.display = 'none';
+    orDivider.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  orDivider.style.display = '';
+  list.innerHTML = forges.map(f => {
+    const lastTxt = formatRelativeTime(f.lastPlayedAt);
+    const sName = String(f.name).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+    return `
+      <div class="forge-row" data-name="${sName}">
+        <div class="info">
+          <span class="name">${sName}</span>
+          <span class="meta">최근 ${lastTxt} · 최고 +${f.bestLevel} · ${f.gold.toLocaleString()} G</span>
+        </div>
+        <button class="enter-btn" data-action="enter">입장</button>
+        <button class="delete-btn" data-action="delete">삭제</button>
+      </div>
+    `;
+  }).join('');
+}
+function showForgeWelcome(allowCancel) {
+  $('forge-welcome-name').value = '';
+  $('forge-welcome-err').textContent = '';
+  renderForgeListInModal();
+  $('forge-welcome-close').style.display = allowCancel ? 'inline-block' : 'none';
+  $('forge-welcome-bg').classList.add('show');
+  setTimeout(() => $('forge-welcome-name').focus(), 50);
+}
+function closeForgeWelcome() { $('forge-welcome-bg').classList.remove('show'); }
+function enterForge(name) {
+  if (!switchForge(name)) {
+    $('forge-welcome-err').textContent = '대장간 로드 실패';
+    return;
+  }
+  closeForgeWelcome();
+  bootRentalPage();
+  showToast(`${forge.name} 입장`, 'success');
+}
+function handleDeleteForgeFromList(name) {
+  if (!confirm(`'${name}' 대장간을 삭제할까요?\n해당 진행 상태가 영구 삭제됩니다 (되돌릴 수 없음).`)) return;
+  deleteForge(name);
+  renderForgeListInModal();
+  showToast(`${name} 삭제됨`, 'fail');
+}
+function handleForgeWelcomeConfirm() {
+  const valid = validateForgeName($('forge-welcome-name').value);
+  if (!valid) {
+    $('forge-welcome-err').textContent = '이름은 1~16자, 공백/제어문자만은 안 됩니다.';
+    return;
+  }
+  if (!createForge(valid)) {
+    $('forge-welcome-err').textContent = '대장간 생성 실패';
+    return;
+  }
+  closeForgeWelcome();
+  bootRentalPage();
+  showToast(`${forge.name} 개점!`, 'success');
+}
+
+// ============================================================
+//  BOOT
+// ============================================================
+function bootRentalPage() {
+  state = loadState();
+  // Resolve any rentals whose timer expired (offline progression)
+  const result = resolveRentals();
+  if (result.didChange) {
+    const succ = result.resolved.filter(r => r.outcome === 'success').length;
+    const fail = result.resolved.filter(r => r.outcome === 'fail').length;
+    const parts = [];
+    if (succ > 0) parts.push(`성공 ${succ}`);
+    if (fail > 0) parts.push(`실패 ${fail}`);
+    if (parts.length) {
+      setTimeout(() => showToast(`귀환 처리: ${parts.join(', ')}`, succ > 0 ? 'success' : 'destroy'), 400);
+      try { playSound(succ > 0 ? 'cash' : 'destroy'); } catch (e) {}
+    }
+  }
+  // Generate any new applicants for collection
+  maybeGenerateApplicants(Date.now());
+  saveState();
+  render();
+}
+
+// Wire up clicks
+document.addEventListener('click', e => {
+  // View-application button: open modal (must check BEFORE card)
+  const viewBtn = e.target.closest('.applicant-card .view-btn');
+  if (viewBtn && viewBtn.dataset.id) {
+    e.stopPropagation();
+    showApplicantModal(viewBtn.dataset.id);
+    return;
+  }
+  // Applicant card body: just select + preview, do NOT open modal
+  const card = e.target.closest('.applicant-card');
+  if (card && card.dataset.id) {
+    selectApplicant(card.dataset.id);
+    return;
+  }
+  // Collection cells
+  const cell = e.target.closest('.col-cell.clickable');
+  if (cell && cell.dataset.level) {
+    selectSword(parseInt(cell.dataset.level));
+    return;
+  }
+});
+
+$('applicant-confirm').addEventListener('click', confirmRent);
+$('applicant-close').addEventListener('click', closeApplicantModal);
+$('applicant-reject').addEventListener('click', rejectApplicant);
+$('applicant-modal-bg').addEventListener('click', e => {
+  if (e.target === $('applicant-modal-bg')) closeApplicantModal();
+});
+$('nav-switch-btn').addEventListener('click', () => {
+  showForgeWelcome(true);
+  playSound('click');
+});
+$('forge-welcome-confirm').addEventListener('click', handleForgeWelcomeConfirm);
+$('forge-welcome-close').addEventListener('click', closeForgeWelcome);
+$('forge-welcome-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleForgeWelcomeConfirm();
+});
+$('forge-list').addEventListener('click', e => {
+  const row = e.target.closest('.forge-row');
+  if (!row) return;
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  if (btn.dataset.action === 'enter') enterForge(row.dataset.name);
+  else if (btn.dataset.action === 'delete') handleDeleteForgeFromList(row.dataset.name);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if ($('applicant-modal-bg').classList.contains('show')) closeApplicantModal();
+  }
+});
+
+// Resume audio context on first user interaction
+document.addEventListener('click', () => { if (state.soundOn) ensureAudio(); }, { once: true });
+
+// Live tick: refresh, generate applicants, resolve rentals
+setInterval(() => {
+  if ($('forge-welcome-bg').classList.contains('show')) return;
+  const now = Date.now();
+  const result = resolveRentals();
+  const newApps = maybeGenerateApplicants(now);
+  if (result.didChange || newApps > 0) saveState();
+  if (result.didChange) {
+    const succ = result.resolved.filter(r => r.outcome === 'success').length;
+    const fail = result.resolved.filter(r => r.outcome === 'fail').length;
+    const parts = [];
+    if (succ > 0) parts.push(`성공 ${succ}`);
+    if (fail > 0) parts.push(`실패 ${fail}`);
+    if (parts.length) {
+      showToast(`귀환: ${parts.join(', ')}`, succ > 0 ? 'success' : 'destroy');
+      try { playSound(succ > 0 ? 'cash' : 'destroy'); } catch (e) {}
+    }
+  }
+  if (newApps > 0) {
+    try { playSound('click'); } catch (e) {}
+  }
+  render();
+}, 1000);
+
+// Init
+if (forge && forge.name) {
+  SAVE_KEY = SAVE_KEY_PREFIX + forge.name;
+  bootRentalPage();
+} else {
+  render();
+  showForgeWelcome();
+}
+</script>
+</body>
+</html>

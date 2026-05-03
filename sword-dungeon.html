@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>던전 - Sword Dungeon</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .dungeon-wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px 24px;
+  }
+
+  /* Tier tab bar */
+  .tier-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+  }
+  .tier-tab {
+    flex: 1;
+    min-width: 120px;
+    background: rgba(0,0,0,0.4);
+    border: 2px solid var(--panel-border);
+    border-bottom-width: 4px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--text-dim);
+    transition: all 0.1s;
+    text-align: center;
+  }
+  .tier-tab:hover:not(.locked) {
+    background: rgba(0,0,0,0.6);
+    color: var(--text);
+  }
+  .tier-tab.active {
+    background: rgba(255,215,0,0.08);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .tier-tab.locked {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .tier-tab .tname {
+    display: block;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+  }
+  .tier-tab .tmeta {
+    display: block;
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+  .tier-tab[data-tier="0"] { border-top: 3px solid #cdd5e0; }
+  .tier-tab[data-tier="1"] { border-top: 3px solid #9bd4ff; }
+  .tier-tab[data-tier="2"] { border-top: 3px solid #4d6dff; }
+  .tier-tab[data-tier="3"] { border-top: 3px solid #c060ff; }
+  .tier-tab[data-tier="4"] { border-top: 3px solid #ff5060; }
+  .tier-tab[data-tier="5"] { border-top: 3px solid #ffd700; }
+
+  .dungeon-tier-info {
+    background: rgba(0,0,0,0.4);
+    border: 2px solid var(--panel-border);
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: center;
+    font-size: 12px;
+  }
+  .dungeon-tier-info .label { color: var(--text-dim); margin-right: 6px; }
+  .dungeon-tier-info .v {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .dungeon-tier-info .v.success { color: var(--success); }
+
+  /* Floor section */
+  .floor-section {
+    margin-bottom: 16px;
+  }
+  .floor-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+
+  /* Corridor — actual dungeon visualization */
+  .corridor {
+    position: relative;
+    height: 60px;
+    background:
+      linear-gradient(90deg,
+        rgba(0,0,0,0.6) 0%,
+        rgba(0,0,0,0.3) 8%,
+        rgba(0,0,0,0.3) 92%,
+        rgba(0,0,0,0.6) 100%
+      ),
+      repeating-linear-gradient(0deg, transparent 0 7px, rgba(74, 56, 112, 0.18) 7px 8px),
+      repeating-linear-gradient(90deg, transparent 0 7px, rgba(74, 56, 112, 0.18) 7px 8px),
+      linear-gradient(180deg, #0d0a18 0%, #1a1430 50%, #0d0a18 100%);
+    border: 2px solid var(--panel-border);
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .corridor.t0 { border-top-color: #cdd5e0; }
+  .corridor.t1 { border-top-color: #9bd4ff; }
+  .corridor.t2 { border-top-color: #4d6dff; }
+  .corridor.t3 { border-top-color: #c060ff; }
+  .corridor.t4 { border-top-color: #ff5060; }
+  .corridor.t5 { border-top-color: #ffd700; }
+  .corridor::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(180deg, transparent 0%, rgba(74, 56, 112, 0.6) 100%);
+  }
+
+  .corridor .entrance {
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'Press Start 2P', monospace;
+    letter-spacing: 0.5px;
+    z-index: 2;
+  }
+  .corridor .boss {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    z-index: 3;
+  }
+  .corridor .boss svg { display: block; }
+  .corridor .boss.fighting {
+    animation: boss-shake 0.3s ease-in-out infinite;
+  }
+  @keyframes boss-shake {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-2px); }
+  }
+  .corridor .boss.dead {
+    animation: boss-die 0.6s ease-in forwards;
+  }
+  @keyframes boss-die {
+    0% { transform: scale(1); opacity: 1; filter: brightness(1); }
+    100% { transform: scale(0.3) rotate(45deg); opacity: 0; filter: brightness(2); }
+  }
+
+  .corridor .hero {
+    position: absolute;
+    bottom: 4px;
+    z-index: 4;
+    transition: left 0.5s linear;
+  }
+  .corridor .hero svg { display: block; }
+  .corridor .hero.fighting {
+    animation: hero-attack 0.5s ease-in-out infinite;
+  }
+  @keyframes hero-attack {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(4px); }
+  }
+  .corridor .hero.dying {
+    animation: hero-die 0.8s ease-in forwards;
+  }
+  @keyframes hero-die {
+    0% { transform: rotate(0); opacity: 1; filter: brightness(1) saturate(1); }
+    100% { transform: rotate(90deg) translateY(8px); opacity: 0.2; filter: brightness(0.3) saturate(0.2); }
+  }
+  .corridor .hero.celebrating {
+    animation: hero-celebrate 0.5s ease-in-out infinite;
+  }
+  @keyframes hero-celebrate {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  /* Hero info row above corridor */
+  .hero-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 0 4px 4px;
+  }
+  .hero-info .name {
+    font-family: 'Galmuri11', monospace;
+    color: var(--accent);
+    font-size: 12px;
+  }
+  .hero-info .badge {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    padding: 2px 5px;
+    background: rgba(255,215,0,0.15);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    margin: 0 6px;
+  }
+  .hero-info .countdown {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--info);
+  }
+  .hero-info .countdown.boss { color: var(--fail); }
+  .hero-info .countdown.return { color: var(--success); }
+  .hero-info .phase-tag {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-left: 8px;
+  }
+
+  .empty-corridor {
+    color: var(--text-dim);
+    font-size: 11px;
+    text-align: center;
+    padding: 14px;
+    font-style: italic;
+    background: rgba(0,0,0,0.3);
+    border: 2px dashed var(--panel-border);
+  }
+
+  .dead-summary {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid var(--fail);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .dead-summary strong { color: var(--fail); }
+  .dead-summary .item {
+    display: inline-block;
+    margin-right: 10px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #fca5a5;
+  }
+
+  .recent-log {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: rgba(0,0,0,0.4);
+    border: 2px solid var(--panel-border);
+    max-height: 180px;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.7;
+  }
+  .recent-log .entry { padding: 2px 0; }
+  .recent-log .entry.success { color: var(--success); }
+  .recent-log .entry.destroy { color: var(--fail); }
+  .recent-log .entry.info { color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<header class="nav-bar">
+  <a href="sword-enhancement.html" class="nav-link">🔥 대장간</a>
+  <a href="sword-rental.html" class="nav-link">⚔ 검 대여소</a>
+  <a href="sword-dungeon.html" class="nav-link active">🏰 던전</a>
+  <span class="nav-spacer"></span>
+  <span class="nav-info">
+    🔥 <span id="nav-forge">—</span>
+    <button class="nav-switch" id="nav-switch-btn" title="다른 대장간 선택">⇄</button>
+    <span>GOLD <span class="v gold" id="nav-gold">0</span></span>
+    <span>활성 <span class="v" id="nav-active">0</span></span>
+  </span>
+</header>
+
+<div class="page-title">
+  <h1>🏰 던전</h1>
+  <div class="sub">용사들의 실시간 모험을 지켜보세요. 페이지를 닫아도 진행됩니다.</div>
+</div>
+
+<div class="dungeon-wrap">
+  <div class="tier-tabs" id="tier-tabs"></div>
+  <div class="dungeon-tier-info" id="tier-info"></div>
+  <div id="floor-list"></div>
+  <div class="recent-log">
+    <div style="color:var(--accent); font-size:11px; margin-bottom:6px; letter-spacing:1px;">📜 최근 던전 기록</div>
+    <div id="recent-log-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Forge welcome / selector -->
+<div class="forge-modal-bg" id="forge-welcome-bg">
+  <div class="forge-card">
+    <h2>🔥 대장간 선택 🔥</h2>
+    <div class="forge-list-section" id="forge-list-section" style="display:none;">
+      <div class="forge-list-label">저장된 대장간</div>
+      <div class="forge-list" id="forge-list"></div>
+    </div>
+    <div class="forge-or" id="forge-or" style="display:none;">또는</div>
+    <div class="desc">새 대장간 이름을 정해주세요.</div>
+    <div class="hint">한글/영문/숫자/공백, 1~16자</div>
+    <input type="text" id="forge-welcome-name" maxlength="16" placeholder="예: Baker의 대장간">
+    <div class="err-msg" id="forge-welcome-err"></div>
+    <div class="forge-actions">
+      <button class="forge-btn cancel" id="forge-welcome-close" style="display:none;">닫기</button>
+      <button class="forge-btn" id="forge-welcome-confirm">새 대장간 개설</button>
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+let activeTier = 0;
+
+// ============================================================
+//  RENDER
+// ============================================================
+function render() {
+  $('nav-forge').textContent = forge ? forge.name : '—';
+  $('nav-gold').textContent = (state.gold || 0).toLocaleString();
+  $('nav-active').textContent = (state.rentals || []).length;
+
+  renderTabs();
+  renderTierInfo();
+  renderFloors();
+  renderRecentLog();
+}
+
+function renderTabs() {
+  const bar = $('tier-tabs');
+  let html = '';
+  for (let t = 0; t < 6; t++) {
+    const cfg = balance.dungeons[t];
+    const prog = state.dungeonProgress?.[t] || { unlocked: t === 0, bestFloor: 0 };
+    const cls = (t === activeTier ? 'active ' : '') + (prog.unlocked ? '' : 'locked');
+    const tcolor = TIER_COLORS[t];
+    html += `
+      <button class="tier-tab ${cls}" data-tier="${t}">
+        <span class="tname" style="color:${tcolor}">${prog.unlocked ? '' : '🔒 '}${cfg.name}</span>
+        <span class="tmeta">티어 ${t} · ${formatDur(cfg.durationMs)}</span>
+      </button>
+    `;
+  }
+  bar.innerHTML = html;
+}
+
+function renderTierInfo() {
+  const cfg = balance.dungeons[activeTier];
+  const prog = state.dungeonProgress?.[activeTier] || { unlocked: activeTier === 0, bestFloor: 0 };
+  const reward = dungeonRewards(activeTier, 1);
+  $('tier-info').innerHTML = `
+    <span><span class="label">던전</span><span class="v" style="color:${TIER_COLORS[activeTier]}">${cfg.name}</span></span>
+    <span><span class="label">소요</span><span class="v">${formatDur(cfg.durationMs)}</span></span>
+    <span><span class="label">성공률</span><span class="v success">${cfg.successRate}%</span></span>
+    <span><span class="label">1F 보상</span><span class="v">${reward.gold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[activeTier]}</span></span>
+    <span><span class="label">최고 층</span><span class="v">${prog.bestFloor || 0} F</span></span>
+    <span><span class="label">상태</span><span class="v ${prog.unlocked ? 'success' : ''}">${prog.unlocked ? '입장 가능' : '🔒 잠김'}</span></span>
+  `;
+}
+
+function renderFloors() {
+  const list = $('floor-list');
+  // For now: 1 floor per tier
+  let html = '';
+  const floorNum = 1;
+  const cfg = balance.dungeons[activeTier];
+  const rentalsHere = (state.rentals || []).filter(r => r.dungeonTier === activeTier && r.floor === floorNum);
+  const deadHere = (state.deadSwords || []).filter(d => d.dungeonTier === activeTier && d.floor === floorNum);
+
+  let floorHtml = `
+    <div class="floor-section">
+      <div class="floor-header">📍 ${floorNum}층 — ${cfg.name}</div>
+  `;
+
+  if (rentalsHere.length === 0) {
+    floorHtml += `<div class="empty-corridor">활성 용사 없음 — 검 대여소에서 검을 빌려주세요</div>`;
+  } else {
+    rentalsHere.forEach(r => floorHtml += renderCorridor(r));
+  }
+
+  if (deadHere.length > 0) {
+    const counts = {};
+    deadHere.forEach(d => { counts[d.swordLevel] = (counts[d.swordLevel] || 0) + 1; });
+    const items = Object.keys(counts).sort((a,b)=>+a-+b)
+      .map(lvl => `<span class="item">+${lvl} ✕${counts[lvl]}</span>`).join('');
+    floorHtml += `
+      <div class="dead-summary">
+        <strong>💀 사망 검 ${deadHere.length}개</strong> 회수 대기 — 다음 성공 시 일괄 반환<br>
+        ${items}
+      </div>
+    `;
+  }
+  floorHtml += `</div>`;
+  html += floorHtml;
+  list.innerHTML = html;
+}
+
+function renderCorridor(r) {
+  const now = Date.now();
+  const total = r.endTime - r.startTime;
+  const elapsed = now - r.startTime;
+  const progress = Math.max(0, Math.min(1, elapsed / total));
+
+  // Phase boundaries: 0-25% out, 25-75% fight, 75-100% return
+  const PH_OUT = 0.25;
+  const PH_BACK = 0.75;
+  let phase, heroLeft, heroClass = '', bossClass = '', countdownLabel, countdownClass;
+  const remainingMs = Math.max(0, r.endTime - now);
+
+  if (progress < PH_OUT) {
+    phase = 'going';
+    // Hero moves from ~5% to ~78% of corridor width
+    const t = progress / PH_OUT;
+    heroLeft = 4 + t * 70;
+    countdownLabel = `${formatDur(remainingMs)} (이동 중)`;
+    countdownClass = '';
+  } else if (progress < PH_BACK) {
+    phase = 'fighting';
+    heroLeft = 74;
+    heroClass = 'fighting';
+    bossClass = 'fighting';
+    countdownLabel = `${formatDur(remainingMs)} (보스 전투 중)`;
+    countdownClass = 'boss';
+  } else if (progress < 1) {
+    phase = 'returning';
+    const t = (progress - PH_BACK) / (1 - PH_BACK);
+    heroLeft = 74 - t * 70;
+    countdownLabel = `${formatDur(remainingMs)} (귀환 중)`;
+    countdownClass = 'return';
+    bossClass = 'dead';
+  } else {
+    phase = 'done';
+    heroLeft = 4;
+    countdownLabel = '귀환 처리 중...';
+    countdownClass = 'return';
+    bossClass = 'dead';
+  }
+
+  const swordName = SWORD_NAMES[r.swordLevel] || `+${r.swordLevel}`;
+  const phaseTag = ({going:'⏩ 이동', fighting:'⚔ 전투', returning:'🏃 귀환', done:''})[phase] || '';
+  const gap = getTier(r.swordLevel) - r.dungeonTier;
+  const cfg = balance.dungeons[r.dungeonTier];
+  const rate = (typeof r.adjustedSuccessRate === 'number') ? r.adjustedSuccessRate : cfg.successRate;
+  let gapBadge = '';
+  if (gap < 0) gapBadge = `<span style="color:var(--fail); font-size:9px; margin-left:6px;">⚠ ${gap}티어 (${rate}%)</span>`;
+  else if (gap > 0) gapBadge = `<span style="color:var(--success); font-size:9px; margin-left:6px;">✦ +${gap}티어 (${rate}%)</span>`;
+  else gapBadge = `<span style="color:var(--text-dim); font-size:9px; margin-left:6px;">매치 (${rate}%)</span>`;
+
+  return `
+    <div class="hero-info">
+      <span><span class="name">${r.heroName}</span> <span class="badge">+${r.swordLevel}</span> <span style="color:var(--text-dim);">${swordName}</span>${gapBadge}</span>
+      <span class="countdown ${countdownClass}">${countdownLabel} <span class="phase-tag">${phaseTag}</span></span>
+    </div>
+    <div class="corridor t${r.dungeonTier}">
+      <span class="entrance">▶</span>
+      <div class="boss ${bossClass}">${buildBossSVG(r.dungeonTier, { size: 48 })}</div>
+      <div class="hero ${heroClass}" style="left: ${heroLeft}%">${buildHeroSVG(r.swordLevel, { size: 28 })}</div>
+    </div>
+  `;
+}
+
+function renderRecentLog() {
+  const list = $('recent-log-list');
+  // Last 30 entries with success/destroy types
+  const entries = (state.log || []).slice().reverse().slice(0, 30);
+  if (entries.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-dim); font-style:italic;">아직 기록이 없어요</div>';
+    return;
+  }
+  list.innerHTML = entries.map(e => `<div class="entry ${e.type || ''}">${e.text}</div>`).join('');
+}
+
+// ============================================================
+//  HELPERS
+// ============================================================
+function formatDur(ms) {
+  if (ms < 0) ms = 0;
+  if (ms < 60000) return Math.ceil(ms / 1000) + '초';
+  if (ms < 3600000) return Math.floor(ms / 60000) + '분 ' + Math.floor((ms % 60000) / 1000) + '초';
+  if (ms < 86400000) return Math.floor(ms / 3600000) + '시간 ' + Math.floor((ms % 3600000) / 60000) + '분';
+  const days = Math.floor(ms / 86400000);
+  const hours = Math.floor((ms % 86400000) / 3600000);
+  return days + '일 ' + hours + '시간';
+}
+
+let toastTimer = null;
+function showToast(text, type = 'info') {
+  const t = $('toast');
+  t.className = 'toast show ' + type;
+  t.textContent = text;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ============================================================
+//  RESOLUTION + NOTIFICATIONS
+// ============================================================
+function tickAndResolve() {
+  const result = resolveRentals();
+  if (result.didChange) {
+    // Show summary toast
+    const succ = result.resolved.filter(r => r.outcome === 'success').length;
+    const fail = result.resolved.filter(r => r.outcome === 'fail').length;
+    const parts = [];
+    if (succ > 0) parts.push(`성공 ${succ}`);
+    if (fail > 0) parts.push(`실패 ${fail}`);
+    if (parts.length) {
+      showToast(`귀환 ${parts.join(', ')}`, succ > 0 ? 'success' : 'destroy');
+      try { playSound(succ > 0 ? 'cash' : 'destroy'); } catch (e) {}
+    }
+  }
+}
+
+// ============================================================
+//  FORGE WELCOME
+// ============================================================
+function renderForgeListInModal() {
+  const list = $('forge-list');
+  const section = $('forge-list-section');
+  const orDivider = $('forge-or');
+  const forges = listForges();
+  if (forges.length === 0) {
+    section.style.display = 'none';
+    orDivider.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  orDivider.style.display = '';
+  list.innerHTML = forges.map(f => {
+    const lastTxt = formatRelativeTime(f.lastPlayedAt);
+    const sName = String(f.name).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+    return `
+      <div class="forge-row" data-name="${sName}">
+        <div class="info">
+          <span class="name">${sName}</span>
+          <span class="meta">최근 ${lastTxt} · 최고 +${f.bestLevel} · ${f.gold.toLocaleString()} G</span>
+        </div>
+        <button class="enter-btn" data-action="enter">입장</button>
+        <button class="delete-btn" data-action="delete">삭제</button>
+      </div>
+    `;
+  }).join('');
+}
+function showForgeWelcome(allowCancel) {
+  $('forge-welcome-name').value = '';
+  $('forge-welcome-err').textContent = '';
+  renderForgeListInModal();
+  $('forge-welcome-close').style.display = allowCancel ? 'inline-block' : 'none';
+  $('forge-welcome-bg').classList.add('show');
+  setTimeout(() => $('forge-welcome-name').focus(), 50);
+}
+function closeForgeWelcome() { $('forge-welcome-bg').classList.remove('show'); }
+function enterForge(name) {
+  if (!switchForge(name)) {
+    $('forge-welcome-err').textContent = '대장간 로드 실패';
+    return;
+  }
+  closeForgeWelcome();
+  bootDungeonPage();
+  showToast(`${forge.name} 입장`, 'success');
+}
+function handleDeleteForgeFromList(name) {
+  if (!confirm(`'${name}' 대장간을 삭제할까요?\n해당 진행 상태가 영구 삭제됩니다 (되돌릴 수 없음).`)) return;
+  deleteForge(name);
+  renderForgeListInModal();
+  showToast(`${name} 삭제됨`, 'fail');
+}
+function handleForgeWelcomeConfirm() {
+  const valid = validateForgeName($('forge-welcome-name').value);
+  if (!valid) {
+    $('forge-welcome-err').textContent = '이름은 1~16자, 공백/제어문자만은 안 됩니다.';
+    return;
+  }
+  if (!createForge(valid)) {
+    $('forge-welcome-err').textContent = '대장간 생성 실패';
+    return;
+  }
+  closeForgeWelcome();
+  bootDungeonPage();
+  showToast(`${forge.name} 개점!`, 'success');
+}
+
+// ============================================================
+//  BOOT
+// ============================================================
+function bootDungeonPage() {
+  state = loadState();
+  // Resolve any rentals whose endTime already passed
+  tickAndResolve();
+  render();
+}
+
+// Wire up tab clicks
+$('tier-tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tier-tab');
+  if (!tab || tab.classList.contains('locked')) return;
+  activeTier = parseInt(tab.dataset.tier);
+  render();
+  try { playSound('click'); } catch (e) {}
+});
+
+// Forge welcome
+$('nav-switch-btn').addEventListener('click', () => {
+  showForgeWelcome(true);
+  try { playSound('click'); } catch (e) {}
+});
+$('forge-welcome-confirm').addEventListener('click', handleForgeWelcomeConfirm);
+$('forge-welcome-close').addEventListener('click', closeForgeWelcome);
+$('forge-welcome-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleForgeWelcomeConfirm();
+});
+$('forge-list').addEventListener('click', e => {
+  const row = e.target.closest('.forge-row');
+  if (!row) return;
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  if (btn.dataset.action === 'enter') enterForge(row.dataset.name);
+  else if (btn.dataset.action === 'delete') handleDeleteForgeFromList(row.dataset.name);
+});
+
+// Resume audio context on first user interaction
+document.addEventListener('click', () => { if (state.soundOn) ensureAudio(); }, { once: true });
+
+// Live render every 500ms (smooth animation)
+setInterval(() => {
+  if ($('forge-welcome-bg').classList.contains('show')) return;
+  tickAndResolve();
+  render();
+}, 500);
+
+// Init
+if (forge && forge.name) {
+  SAVE_KEY = SAVE_KEY_PREFIX + forge.name;
+  bootDungeonPage();
+} else {
+  render();
+  showForgeWelcome();
+}
+</script>
+</body>
+</html>
