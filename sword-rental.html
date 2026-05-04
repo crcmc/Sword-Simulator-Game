@@ -300,6 +300,37 @@
   .applicant-modal .summary .neg { color: var(--fail); }
   .applicant-modal .summary .warn { color: var(--warn); }
 
+  .applicant-modal .floor-selector {
+    margin: 10px 0 6px;
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--panel-border);
+    font-size: 11px;
+  }
+  .applicant-modal .floor-selector .key { color: var(--text-dim); }
+  .applicant-modal .floor-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .applicant-modal .floor-btn {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 5px 11px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+  .applicant-modal .floor-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .applicant-modal .floor-btn.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
   /* Active rental rows */
   .rental-list { display: flex; flex-direction: column; gap: 6px; max-height: 480px; overflow-y: auto; }
   .rental-row {
@@ -506,6 +537,12 @@ const $ = id => document.getElementById(id);
 let selectedSwordLevel = -1;
 let selectedApplicantId = null;
 let pendingApplicantId = null;
+let pendingFloor = 1; // floor selected in applicant modal
+
+// "1층", "지하 1층", "지하 2층" 식 표기
+function floorLabel(n) {
+  return n <= 1 ? '1층' : `지하 ${n - 1}층`;
+}
 
 function selectedApplicant() {
   if (!selectedApplicantId) return null;
@@ -759,19 +796,47 @@ function showApplicantModal(applicantId) {
   if (!a) return;
   pendingApplicantId = applicantId;
   selectedApplicantId = applicantId; // also update center display
+  // Default selected floor = highest unlocked challenge (bestFloor + 1)
+  const prog = (state.dungeonProgress && state.dungeonProgress[a.desiredDungeonTier]) || { bestFloor: 0 };
+  pendingFloor = (prog.bestFloor || 0) + 1;
+  renderApplicantModalContent();
+  $('applicant-modal-bg').classList.add('show');
+  render();
+}
+
+function renderApplicantModalContent() {
+  if (!pendingApplicantId) return;
+  const a = (state.applicants || []).find(x => x.id === pendingApplicantId);
+  if (!a) return;
+  const tier = a.desiredDungeonTier;
   const tierColor = TIER_COLORS[a.tier];
-  const dungeon = balance.dungeons[a.desiredDungeonTier];
-  const dur = adjustedDuration(selectedSwordLevel, a.desiredDungeonTier, a.tier);
-  const rate = adjustedSuccessRate(selectedSwordLevel, a.desiredDungeonTier, a.tier);
-  const reward = dungeonRewards(a.desiredDungeonTier, 1);
+  const dungeon = balance.dungeons[tier];
+  const prog = (state.dungeonProgress && state.dungeonProgress[tier]) || { bestFloor: 0 };
+  const maxAvailableFloor = (prog.bestFloor || 0) + 1;
+  // Clamp pendingFloor in case progression changed since modal opened
+  if (pendingFloor < 1) pendingFloor = 1;
+  if (pendingFloor > maxAvailableFloor) pendingFloor = maxAvailableFloor;
+
+  const dur = adjustedDuration(selectedSwordLevel, tier, a.tier, pendingFloor);
+  const rate = adjustedSuccessRate(selectedSwordLevel, tier, a.tier);
+  const reward = dungeonRewards(tier, pendingFloor);
   const heroCut = Math.floor(reward.gold * a.payRate / 100);
   const playerGold = reward.gold - heroCut;
 
+  // Floor buttons (1 ~ maxAvailableFloor). Cleared = ✓, challenge = ★.
+  let floorButtons = '';
+  for (let f = 1; f <= maxAvailableFloor; f++) {
+    const cls = f === pendingFloor ? 'active' : '';
+    const tag = (f <= (prog.bestFloor || 0)) ? '✓' : '★';
+    floorButtons += `<button class="floor-btn ${cls}" data-floor="${f}" type="button">${tag} ${floorLabel(f)}</button>`;
+  }
+
   let summary = `<div class="key">선택 검:</div> <strong>+${selectedSwordLevel} ${SWORD_NAMES[selectedSwordLevel]}</strong> (티어 ${getTier(selectedSwordLevel)})<br>`;
-  summary += `<div class="key">희망 던전:</div> <strong>${dungeon.name}</strong> (티어 ${a.desiredDungeonTier})${a.greedy ? ' <span class="warn">🎯 능력 이상 도전</span>' : ''}<br>`;
+  summary += `<div class="key">희망 던전:</div> <strong>${dungeon.name}</strong> (티어 ${tier})${a.greedy ? ' <span class="warn">🎯 능력 이상 도전</span>' : ''}<br>`;
+  summary += `<div class="key">출정 층:</div> <strong>${floorLabel(pendingFloor)}</strong><br>`;
   summary += `<div class="key">던전 성공률:</div> <span class="${rate >= 70 ? 'pos' : rate >= 30 ? 'warn' : 'neg'}">${rate}%</span><br>`;
   summary += `<div class="key">공략 소요 시간:</div> ${formatDuration(dur)}<br>`;
-  summary += `<div class="key">성공 시 보수:</div> +${playerGold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[a.desiredDungeonTier]} (용사 ${heroCut.toLocaleString()} G 차감)`;
+  summary += `<div class="key">성공 시 보수:</div> +${playerGold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[tier]} (용사 ${heroCut.toLocaleString()} G 차감)`;
 
   $('applicant-modal-title').textContent = `${a.name} 신청서`;
   $('applicant-modal-body').innerHTML = `
@@ -785,13 +850,12 @@ function showApplicantModal(applicantId) {
       <div class="stat-cell"><div class="label">민첩</div><div class="v">${a.stats.agility}</div></div>
       <div class="stat-cell"><div class="label">행운</div><div class="v">${a.stats.luck}</div></div>
     </div>
-    <div class="info-row"><span class="k">희망 던전</span><span class="v">${dungeon.name} (티어 ${a.desiredDungeonTier})${a.greedy ? ' 🎯' : ''}</span></div>
+    <div class="info-row"><span class="k">희망 던전</span><span class="v">${dungeon.name} (티어 ${tier})${a.greedy ? ' 🎯' : ''}</span></div>
     <div class="info-row"><span class="k">희망 보수율</span><span class="v" style="color:var(--success);">${a.payRate}%</span></div>
     <div class="motivation">"${a.motivation}"</div>
+    <div class="floor-selector"><div class="key" style="margin-bottom:6px;">출정 층 선택 (최고 ${prog.bestFloor || 0}층 클리어)</div><div class="floor-buttons">${floorButtons}</div></div>
     <div class="summary">${summary}</div>
   `;
-  $('applicant-modal-bg').classList.add('show');
-  render();
 }
 
 function closeApplicantModal() {
@@ -831,7 +895,11 @@ function confirmRent() {
   const lvl = selectedSwordLevel;
   const tier = a.desiredDungeonTier;
   const cfg = balance.dungeons[tier];
-  const adjDur = adjustedDuration(lvl, tier, a.tier);
+  // Validate floor: must be ≤ bestFloor + 1
+  const prog = (state.dungeonProgress && state.dungeonProgress[tier]) || { bestFloor: 0 };
+  const maxAvailableFloor = (prog.bestFloor || 0) + 1;
+  const floor = Math.max(1, Math.min(maxAvailableFloor, pendingFloor || 1));
+  const adjDur = adjustedDuration(lvl, tier, a.tier, floor);
   const adjRate = adjustedSuccessRate(lvl, tier, a.tier);
   const now = Date.now();
 
@@ -840,7 +908,7 @@ function confirmRent() {
     swordLevel: lvl,
     swordTier: getTier(lvl),
     dungeonTier: tier,
-    floor: 1,
+    floor: floor,
     heroName: a.name,
     heroTier: a.tier,
     heroStats: a.stats,
@@ -861,7 +929,7 @@ function confirmRent() {
   state.stats.rentalsStarted = (state.stats.rentalsStarted || 0) + 1;
   state.log = state.log || [];
   state.log.push({
-    text: `⚔ ${a.name} (T${a.tier}) 이(가) +${lvl} ${SWORD_NAMES[lvl]} 들고 ${cfg.name} 1F 출정!`,
+    text: `⚔ ${a.name} (T${a.tier}) 이(가) +${lvl} ${SWORD_NAMES[lvl]} 들고 ${cfg.name} ${floorLabel(floor)} 출정!`,
     type: 'info',
     t: now
   });
@@ -1022,6 +1090,14 @@ document.addEventListener('click', e => {
   const cell = e.target.closest('.col-cell.clickable');
   if (cell && cell.dataset.level) {
     selectSword(parseInt(cell.dataset.level));
+    return;
+  }
+  // Floor selector inside applicant modal
+  const fbtn = e.target.closest('.floor-btn');
+  if (fbtn && fbtn.dataset.floor) {
+    pendingFloor = parseInt(fbtn.dataset.floor, 10);
+    renderApplicantModalContent();
+    playSound('click');
     return;
   }
 });

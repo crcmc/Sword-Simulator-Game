@@ -168,6 +168,7 @@ const BALANCE_DEFAULTS = {
   "tierMismatchBonus": 20,
   "tierMismatchTimeBonus": 20,
   "tierMismatchTimePenalty": 10,
+  "floorTimeMultiplier": 0.1,
   "applicantBaseIntervalMs": 10000,
   "applicantMaxPerSword": 10,
   "applicantMaxTotal": 100,

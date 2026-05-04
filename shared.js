@@ -753,7 +753,7 @@ function adjustedSuccessRate(swordLevel, dungeonTier, heroTier) {
   }
   return Math.max(1, Math.min(100, rate));
 }
-function adjustedDuration(swordLevel, dungeonTier, heroTier) {
+function adjustedDuration(swordLevel, dungeonTier, heroTier, floor) {
   let mult = 1;
   mult = _applyDurGap(mult, getTier(swordLevel) - dungeonTier);
   if (typeof heroTier === 'number') {
@@ -761,7 +761,12 @@ function adjustedDuration(swordLevel, dungeonTier, heroTier) {
   }
   // Cap multiplier between 0.25 (max combined reduction) and 4 (max combined extension)
   mult = Math.max(0.25, Math.min(4, mult));
-  return Math.floor(balance.dungeons[dungeonTier].durationMs * mult);
+  // Floor scaling: each floor above 1 multiplies duration by (1 + floorTimeMultiplier).
+  // E.g. 10% per floor → F1×1.0, F2×1.1, F3×1.21, F4×1.331, ...
+  const floorN = Math.max(1, floor || 1);
+  const floorRate = (typeof balance.floorTimeMultiplier === 'number') ? balance.floorTimeMultiplier : 0.1;
+  const floorMult = Math.pow(1 + floorRate, floorN - 1);
+  return Math.floor(balance.dungeons[dungeonTier].durationMs * mult * floorMult);
 }
 
 // Resolve all rentals whose endTime ≤ now. Returns { resolved: [...], didChange }

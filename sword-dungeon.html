@@ -21,59 +21,143 @@
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px 24px;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  @media (max-width: 800px) {
+    .dungeon-wrap {
+      display: flex;
+      flex-direction: column;
+    }
   }
 
-  /* Tier tab bar */
-  .tier-tabs {
+  /* Left dungeon sidebar */
+  .dungeon-side {
     display: flex;
-    gap: 4px;
-    margin-bottom: 16px;
-    overflow-x: auto;
+    flex-direction: column;
+    gap: 6px;
   }
-  .tier-tab {
-    flex: 1;
-    min-width: 120px;
+  @media (max-width: 800px) {
+    .dungeon-side {
+      flex-direction: row;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      scrollbar-width: thin;
+    }
+  }
+  .dungeon-card {
     background: rgba(0,0,0,0.4);
     border: 2px solid var(--panel-border);
-    border-bottom-width: 4px;
+    border-left-width: 5px;
     padding: 10px 12px;
     cursor: pointer;
     font-family: inherit;
     color: var(--text-dim);
     transition: all 0.1s;
-    text-align: center;
+    text-align: left;
+    min-width: 0;
   }
-  .tier-tab:hover:not(.locked) {
+  @media (max-width: 800px) {
+    .dungeon-card { min-width: 140px; flex-shrink: 0; }
+  }
+  .dungeon-card:hover:not(.locked) {
     background: rgba(0,0,0,0.6);
     color: var(--text);
   }
-  .tier-tab.active {
+  .dungeon-card.active {
     background: rgba(255,215,0,0.08);
     border-color: var(--accent);
     color: var(--accent);
   }
-  .tier-tab.locked {
-    opacity: 0.4;
+  .dungeon-card.locked {
+    opacity: 0.45;
     cursor: not-allowed;
   }
-  .tier-tab .tname {
+  .dungeon-card .dname {
     display: block;
-    font-family: 'Press Start 2P', monospace;
-    font-size: 10px;
+    font-size: 13px;
+    font-weight: 600;
     letter-spacing: 0.5px;
   }
-  .tier-tab .tmeta {
+  .dungeon-card .dmeta {
     display: block;
-    font-size: 9px;
+    font-size: 10px;
     color: var(--text-dim);
     margin-top: 4px;
   }
-  .tier-tab[data-tier="0"] { border-top: 3px solid #cdd5e0; }
-  .tier-tab[data-tier="1"] { border-top: 3px solid #9bd4ff; }
-  .tier-tab[data-tier="2"] { border-top: 3px solid #4d6dff; }
-  .tier-tab[data-tier="3"] { border-top: 3px solid #c060ff; }
-  .tier-tab[data-tier="4"] { border-top: 3px solid #ff5060; }
-  .tier-tab[data-tier="5"] { border-top: 3px solid #ffd700; }
+  .dungeon-card[data-tier="0"] { border-left-color: #cdd5e0; }
+  .dungeon-card[data-tier="1"] { border-left-color: #9bd4ff; }
+  .dungeon-card[data-tier="2"] { border-left-color: #4d6dff; }
+  .dungeon-card[data-tier="3"] { border-left-color: #c060ff; }
+  .dungeon-card[data-tier="4"] { border-left-color: #ff5060; }
+  .dungeon-card[data-tier="5"] { border-left-color: #ffd700; }
+
+  /* Right dungeon detail */
+  .dungeon-detail { min-width: 0; }
+  .dungeon-banner {
+    background: linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.2));
+    border: 2px solid var(--panel-border);
+    border-top-width: 5px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+  }
+  .dungeon-banner h2 {
+    font-size: 16px;
+    margin: 0 0 6px;
+    letter-spacing: 1px;
+  }
+  .dungeon-banner .dsub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+  .dungeon-banner .dstats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 22px;
+    font-size: 11px;
+  }
+  .dungeon-banner .dstats .label { color: var(--text-dim); margin-right: 6px; }
+  .dungeon-banner .dstats .v { font-weight: 600; }
+
+  /* Floor card states */
+  .floor-section {
+    background: rgba(0,0,0,0.3);
+    border: 2px solid var(--panel-border);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    transition: opacity 0.2s;
+  }
+  .floor-section.cleared { border-color: rgba(94, 234, 212, 0.4); }
+  .floor-section.challenge { border-color: var(--accent); border-left-width: 4px; }
+  .floor-section.locked {
+    opacity: 0.4;
+    pointer-events: none;
+    background: rgba(0,0,0,0.55);
+    filter: grayscale(0.6);
+  }
+  .floor-section.locked .floor-header { color: var(--text-dim); }
+  .floor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .floor-header .fname { font-weight: 600; }
+  .floor-header .fmeta { font-size: 10px; color: var(--text-dim); }
+  .floor-section .lock-msg {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-style: italic;
+    text-align: center;
+    padding: 8px 0;
+  }
 
   .dungeon-tier-info {
     background: rgba(0,0,0,0.4);
@@ -306,13 +390,15 @@
 </div>
 
 <div class="dungeon-wrap">
-  <div class="tier-tabs" id="tier-tabs"></div>
-  <div class="dungeon-tier-info" id="tier-info"></div>
-  <div id="floor-list"></div>
-  <div class="recent-log">
-    <div style="color:var(--accent); font-size:11px; margin-bottom:6px; letter-spacing:1px;">📜 최근 던전 기록</div>
-    <div id="recent-log-list"></div>
+  <div class="dungeon-side" id="dungeon-side"></div>
+  <div class="dungeon-detail">
+    <div class="dungeon-banner" id="dungeon-banner"></div>
+    <div id="floor-list"></div>
   </div>
+</div>
+<div class="recent-log" style="max-width:1200px; margin:0 auto; padding:0 20px 24px;">
+  <div style="color:var(--accent); font-size:11px; margin-bottom:6px; letter-spacing:1px;">📜 최근 던전 기록</div>
+  <div id="recent-log-list"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -351,79 +437,129 @@ function render() {
   $('nav-gold').textContent = (state.gold || 0).toLocaleString();
   $('nav-active').textContent = (state.rentals || []).length;
 
-  renderTabs();
-  renderTierInfo();
+  renderDungeonSide();
+  renderBanner();
   renderFloors();
   renderRecentLog();
 }
 
-function renderTabs() {
-  const bar = $('tier-tabs');
+function floorLabel(n) {
+  return n <= 1 ? '1층' : `지하 ${n - 1}층`;
+}
+
+function renderDungeonSide() {
+  const bar = $('dungeon-side');
   let html = '';
   for (let t = 0; t < 6; t++) {
     const cfg = balance.dungeons[t];
     const prog = state.dungeonProgress?.[t] || { unlocked: t === 0, bestFloor: 0 };
     const cls = (t === activeTier ? 'active ' : '') + (prog.unlocked ? '' : 'locked');
     const tcolor = TIER_COLORS[t];
+    const activeCount = (state.rentals || []).filter(r => r.dungeonTier === t).length;
+    const lock = prog.unlocked ? '' : '🔒 ';
+    const meta = prog.unlocked
+      ? `T${t} · 최고 ${prog.bestFloor || 0}층` + (activeCount > 0 ? ` · 출정 ${activeCount}` : '')
+      : `T${t} · 잠김`;
     html += `
-      <button class="tier-tab ${cls}" data-tier="${t}">
-        <span class="tname" style="color:${tcolor}">${prog.unlocked ? '' : '🔒 '}${cfg.name}</span>
-        <span class="tmeta">티어 ${t} · ${formatDur(cfg.durationMs)}</span>
+      <button class="dungeon-card ${cls}" data-tier="${t}" type="button">
+        <span class="dname" style="color:${tcolor}">${lock}${cfg.name}</span>
+        <span class="dmeta">${meta}</span>
       </button>
     `;
   }
   bar.innerHTML = html;
 }
 
-function renderTierInfo() {
+function renderBanner() {
   const cfg = balance.dungeons[activeTier];
   const prog = state.dungeonProgress?.[activeTier] || { unlocked: activeTier === 0, bestFloor: 0 };
   const reward = dungeonRewards(activeTier, 1);
-  $('tier-info').innerHTML = `
-    <span><span class="label">던전</span><span class="v" style="color:${TIER_COLORS[activeTier]}">${cfg.name}</span></span>
-    <span><span class="label">소요</span><span class="v">${formatDur(cfg.durationMs)}</span></span>
-    <span><span class="label">성공률</span><span class="v success">${cfg.successRate}%</span></span>
-    <span><span class="label">1F 보상</span><span class="v">${reward.gold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[activeTier]}</span></span>
-    <span><span class="label">최고 층</span><span class="v">${prog.bestFloor || 0} F</span></span>
-    <span><span class="label">상태</span><span class="v ${prog.unlocked ? 'success' : ''}">${prog.unlocked ? '입장 가능' : '🔒 잠김'}</span></span>
+  const tcolor = TIER_COLORS[activeTier];
+  const banner = $('dungeon-banner');
+  banner.style.borderTopColor = tcolor;
+  banner.innerHTML = `
+    <h2 style="color:${tcolor}">${prog.unlocked ? '' : '🔒 '}${cfg.name}</h2>
+    <div class="dsub">티어 ${activeTier} · 자원: ${balance.resourceNames[activeTier]}</div>
+    <div class="dstats">
+      <span><span class="label">기본 소요</span><span class="v">${formatDur(cfg.durationMs)}</span></span>
+      <span><span class="label">기본 성공률</span><span class="v" style="color:var(--success)">${cfg.successRate}%</span></span>
+      <span><span class="label">1층 보상</span><span class="v">${reward.gold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[activeTier]}</span></span>
+      <span><span class="label">최고 클리어</span><span class="v">${(prog.bestFloor || 0)}층</span></span>
+      <span><span class="label">층당 시간 가산</span><span class="v">+${Math.round(((typeof balance.floorTimeMultiplier === 'number' ? balance.floorTimeMultiplier : 0.1) * 100))}%</span></span>
+    </div>
   `;
 }
 
 function renderFloors() {
   const list = $('floor-list');
-  // For now: 1 floor per tier
-  let html = '';
-  const floorNum = 1;
   const cfg = balance.dungeons[activeTier];
-  const rentalsHere = (state.rentals || []).filter(r => r.dungeonTier === activeTier && r.floor === floorNum);
-  const deadHere = (state.deadSwords || []).filter(d => d.dungeonTier === activeTier && d.floor === floorNum);
-
-  let floorHtml = `
-    <div class="floor-section">
-      <div class="floor-header">📍 ${floorNum}층 — ${cfg.name}</div>
-  `;
-
-  if (rentalsHere.length === 0) {
-    floorHtml += `<div class="empty-corridor">활성 용사 없음 — 검 대여소에서 검을 빌려주세요</div>`;
-  } else {
-    rentalsHere.forEach(r => floorHtml += renderCorridor(r));
+  const prog = state.dungeonProgress?.[activeTier] || { unlocked: activeTier === 0, bestFloor: 0 };
+  if (!prog.unlocked) {
+    list.innerHTML = `<div class="floor-section locked"><div class="floor-header">🔒 ${cfg.name}</div><div class="lock-msg">이전 티어 던전을 1회 이상 클리어하세요.</div></div>`;
+    return;
   }
-
-  if (deadHere.length > 0) {
-    const counts = {};
-    deadHere.forEach(d => { counts[d.swordLevel] = (counts[d.swordLevel] || 0) + 1; });
-    const items = Object.keys(counts).sort((a,b)=>+a-+b)
-      .map(lvl => `<span class="item">+${lvl} ✕${counts[lvl]}</span>`).join('');
-    floorHtml += `
-      <div class="dead-summary">
-        <strong>💀 사망 검 ${deadHere.length}개</strong> 회수 대기 — 다음 성공 시 일괄 반환<br>
-        ${items}
-      </div>
-    `;
+  const bestFloor = prog.bestFloor || 0;
+  // Show floors 1 .. (bestFloor + 1) as accessible, plus 2 locked previews (max +3)
+  const lastShown = bestFloor + 3;
+  let html = '';
+  for (let f = 1; f <= lastShown; f++) {
+    html += renderFloorSection(f, bestFloor, cfg);
   }
-  floorHtml += `</div>`;
-  html += floorHtml;
   list.innerHTML = html;
+}
+
+function renderFloorSection(f, bestFloor, cfg) {
+  const challengeFloor = bestFloor + 1;
+  const cleared = f <= bestFloor;
+  const challenge = f === challengeFloor;
+  const locked = f > challengeFloor;
+  const cls = locked ? 'locked' : (cleared ? 'cleared' : (challenge ? 'challenge' : ''));
+
+  const rentalsHere = (state.rentals || []).filter(r => r.dungeonTier === activeTier && r.floor === f);
+  const deadHere = (state.deadSwords || []).filter(d => d.dungeonTier === activeTier && d.floor === f);
+
+  // Time multiplier for this floor
+  const floorRate = (typeof balance.floorTimeMultiplier === 'number') ? balance.floorTimeMultiplier : 0.1;
+  const floorMult = Math.pow(1 + floorRate, f - 1);
+  const baseDur = Math.floor(cfg.durationMs * floorMult);
+  // Reward scaling (existing dungeonRewards logic)
+  const reward = dungeonRewards(activeTier, f);
+
+  const status = cleared ? '✓ 클리어 완료' : (challenge ? '★ 도전' : '🔒 잠김');
+  const statusColor = cleared ? 'var(--teal)' : (challenge ? 'var(--accent)' : 'var(--text-dim)');
+
+  let body = '';
+  if (locked) {
+    body = `<div class="lock-msg">${floorLabel(challengeFloor)} 을(를) 먼저 클리어하세요.</div>`;
+  } else {
+    if (rentalsHere.length === 0) {
+      body = `<div class="empty-corridor">활성 용사 없음 — 검 대여소에서 ${floorLabel(f)} 출정</div>`;
+    } else {
+      body = rentalsHere.map(renderCorridor).join('');
+    }
+    if (deadHere.length > 0) {
+      const counts = {};
+      deadHere.forEach(d => { counts[d.swordLevel] = (counts[d.swordLevel] || 0) + 1; });
+      const items = Object.keys(counts).sort((a,b)=>+a-+b)
+        .map(lvl => `<span class="item">+${lvl} ✕${counts[lvl]}</span>`).join('');
+      body += `
+        <div class="dead-summary">
+          <strong>💀 사망 검 ${deadHere.length}개</strong> 회수 대기 — 다음 성공 시 일괄 반환<br>
+          ${items}
+        </div>
+      `;
+    }
+  }
+
+  return `
+    <div class="floor-section ${cls}">
+      <div class="floor-header">
+        <span class="fname">📍 ${floorLabel(f)}</span>
+        <span class="fmeta" style="color:${statusColor};">${status} · 소요 ${formatDur(baseDur)} · 보상 ${reward.gold.toLocaleString()}G</span>
+      </div>
+      ${body}
+    </div>
+  `;
 }
 
 function renderCorridor(r) {
@@ -621,11 +757,11 @@ function bootDungeonPage() {
   render();
 }
 
-// Wire up tab clicks
-$('tier-tabs').addEventListener('click', e => {
-  const tab = e.target.closest('.tier-tab');
-  if (!tab || tab.classList.contains('locked')) return;
-  activeTier = parseInt(tab.dataset.tier);
+// Wire up dungeon card clicks
+$('dungeon-side').addEventListener('click', e => {
+  const card = e.target.closest('.dungeon-card');
+  if (!card || card.classList.contains('locked')) return;
+  activeTier = parseInt(card.dataset.tier);
   render();
   try { playSound('click'); } catch (e) {}
 });

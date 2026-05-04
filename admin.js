@@ -87,6 +87,7 @@ function populateForm() {
   $('ad-tierMismatchBonus').value = balance.tierMismatchBonus != null ? balance.tierMismatchBonus : 5;
   $('ad-tierMismatchTimeBonus').value = balance.tierMismatchTimeBonus != null ? balance.tierMismatchTimeBonus : 10;
   $('ad-tierMismatchTimePenalty').value = balance.tierMismatchTimePenalty != null ? balance.tierMismatchTimePenalty : 10;
+  $('ad-floorTimeMultiplier').value = balance.floorTimeMultiplier != null ? balance.floorTimeMultiplier : 0.1;
   $('ad-applicantBaseIntervalMs').value = balance.applicantBaseIntervalMs != null ? balance.applicantBaseIntervalMs : 30000;
   $('ad-applicantMaxPerSword').value = balance.applicantMaxPerSword != null ? balance.applicantMaxPerSword : 10;
   $('ad-applicantMaxTotal').value = balance.applicantMaxTotal != null ? balance.applicantMaxTotal : 100;
@@ -237,6 +238,7 @@ function readForm() {
   next.tierMismatchBonus = num('ad-tierMismatchBonus');
   next.tierMismatchTimeBonus = num('ad-tierMismatchTimeBonus');
   next.tierMismatchTimePenalty = num('ad-tierMismatchTimePenalty');
+  next.floorTimeMultiplier = Math.max(0, Math.min(2, num('ad-floorTimeMultiplier')));
   next.applicantBaseIntervalMs = Math.max(1000, intv('ad-applicantBaseIntervalMs'));
   next.applicantMaxPerSword = Math.max(1, intv('ad-applicantMaxPerSword'));
   next.applicantMaxTotal = Math.max(10, intv('ad-applicantMaxTotal'));
