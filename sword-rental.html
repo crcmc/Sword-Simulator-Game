@@ -638,8 +638,8 @@ function renderDungeonTarget(a) {
     const rateColor = rate >= 70 ? 'success' : rate >= 30 ? 'warn' : 'fail';
     box.innerHTML = `
       <div class="dt-row"><span class="label">희망 던전</span><span class="v" style="color:${TIER_COLORS[tier]}">${cfg.name} (티어 ${tier}) ${a.greedy ? '🎯' : ''}</span></div>
-      <div class="dt-row"><span class="label">조정 성공률 ${gapTxt}</span><span class="v ${rateColor}">${rate}%</span></div>
-      <div class="dt-row"><span class="label">조정 소요 시간</span><span class="v">${formatDuration(dur)}</span></div>
+      <div class="dt-row"><span class="label">던전 성공률 ${gapTxt}</span><span class="v ${rateColor}">${rate}%</span></div>
+      <div class="dt-row"><span class="label">공략 소요 시간</span><span class="v">${formatDuration(dur)}</span></div>
       <div class="dt-row"><span class="label">예상 보수 (성공 시)</span><span class="v">+${playerGold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[tier]}</span></div>
       <div class="dt-row"><span class="label">용사 보수 (${a.payRate}%)</span><span class="v warn">−${heroCut.toLocaleString()} G</span></div>
     `;
@@ -769,8 +769,8 @@ function showApplicantModal(applicantId) {
 
   let summary = `<div class="key">선택 검:</div> <strong>+${selectedSwordLevel} ${SWORD_NAMES[selectedSwordLevel]}</strong> (티어 ${getTier(selectedSwordLevel)})<br>`;
   summary += `<div class="key">희망 던전:</div> <strong>${dungeon.name}</strong> (티어 ${a.desiredDungeonTier})${a.greedy ? ' <span class="warn">🎯 능력 이상 도전</span>' : ''}<br>`;
-  summary += `<div class="key">조정 성공률:</div> <span class="${rate >= 70 ? 'pos' : rate >= 30 ? 'warn' : 'neg'}">${rate}%</span><br>`;
-  summary += `<div class="key">조정 소요:</div> ${formatDuration(dur)}<br>`;
+  summary += `<div class="key">던전 성공률:</div> <span class="${rate >= 70 ? 'pos' : rate >= 30 ? 'warn' : 'neg'}">${rate}%</span><br>`;
+  summary += `<div class="key">공략 소요 시간:</div> ${formatDuration(dur)}<br>`;
   summary += `<div class="key">성공 시 보수:</div> +${playerGold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[a.desiredDungeonTier]} (용사 ${heroCut.toLocaleString()} G 차감)`;
 
   $('applicant-modal-title').textContent = `${a.name} 신청서`;

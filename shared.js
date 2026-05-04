@@ -67,17 +67,21 @@ function applyBalance() {
 }
 
 // =============== HELPERS ===============
+// Tier boundaries (T0 has 6 levels: +0~+5; T1~T5 have 5 levels each).
+// T0: 0~5 / T1: 6~10 / T2: 11~15 / T3: 16~20 / T4: 21~25 / T5: 26~30
+const TIER_MIN_LEVELS = [0, 6, 11, 16, 21, 26];
 function getTier(level) {
-  if (level <= 4) return 0;
-  if (level <= 9) return 1;
-  if (level <= 14) return 2;
-  if (level <= 19) return 3;
-  if (level <= 24) return 4;
+  if (level <= 5) return 0;
+  if (level <= 10) return 1;
+  if (level <= 15) return 2;
+  if (level <= 20) return 3;
+  if (level <= 25) return 4;
   return 5;
 }
-function getSubLevel(level) { return level - [0,5,10,15,20,25][getTier(level)]; }
+function getSubLevel(level) { return level - TIER_MIN_LEVELS[getTier(level)]; }
 function tierBounds(tier) {
-  const min = tier * 5;
+  if (tier === 0) return { min: 0, max: 5 };
+  const min = TIER_MIN_LEVELS[tier];
   const max = tier === 5 ? 30 : (min + 4);
   return { min, max };
 }
@@ -111,7 +115,7 @@ function rollFailure(level) {
   return 'maintain';
 }
 function getSummonCost(level) {
-  const sublevel = level - getTier(level) * 5;
+  const sublevel = getSubLevel(level);
   return Math.max(1, balance.summonBaseCost) * Math.pow(2, sublevel);
 }
 
@@ -391,7 +395,7 @@ const TIER_PATTERNS = {
   ]
 };
 const TIER_DECOR = {
-  0: [[],[[7,28,'j']],[[7,28,'j'],[8,28,'j']],[[7,28,'j'],[8,28,'j'],[7,14,'r']],[[7,28,'j'],[8,28,'j'],[7,14,'r'],[8,14,'r']]],
+  0: [[],[[7,28,'j']],[[7,28,'j'],[8,28,'j']],[[7,28,'j'],[8,28,'j'],[7,14,'r']],[[7,28,'j'],[8,28,'j'],[7,14,'r'],[8,14,'r']],[[7,28,'j'],[8,28,'j'],[7,14,'r'],[8,14,'r'],[7,11,'r'],[8,11,'r']]],
   1: [[],[[7,13,'r']],[[7,13,'r'],[8,13,'r']],[[7,13,'r'],[8,13,'r'],[7,17,'r']],[[7,13,'r'],[8,13,'r'],[7,17,'r'],[8,17,'r']]],
   2: [[],[[7,9,'r']],[[7,9,'r'],[8,9,'r']],[[7,9,'r'],[8,9,'r'],[7,14,'r']],[[7,9,'r'],[8,9,'r'],[7,14,'r'],[8,14,'r']]],
   3: [[],[[6,10,'r'],[9,10,'r']],[[6,10,'r'],[9,10,'r'],[6,15,'r'],[9,15,'r']],[[6,10,'r'],[9,10,'r'],[6,15,'r'],[9,15,'r'],[7,13,'j']],[[6,10,'r'],[9,10,'r'],[6,15,'r'],[9,15,'r'],[7,13,'j'],[8,13,'j']]],
@@ -445,7 +449,7 @@ function buildSwordSVG(level, options) {
   const silhouette = !!options.silhouette;
   const width = options.width || 200;
   const tier = getTier(level);
-  const sub = level - tier * 5;
+  const sub = getSubLevel(level);
   const p = silhouette ? SILHOUETTE_PALETTE : getSwordPalette(level);
   const pattern = TIER_PATTERNS[tier];
   const decor = TIER_DECOR[tier][sub] || [];
