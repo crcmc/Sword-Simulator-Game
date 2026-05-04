@@ -16,11 +16,19 @@
     color: var(--text);
     min-height: 100vh;
     margin: 0;
+    /* shared.css는 게임의 픽셀 톤 유지를 위해 font-smoothing:none + image-rendering:pixelated를 body에 걸어둠.
+       admin은 가독성이 우선이라 이를 무력화. */
+    image-rendering: auto !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    text-rendering: optimizeLegibility;
   }
   /* Admin page: force Pretendard everywhere — overrides pixel-font rules
      inherited from shared.css (.btn, .modal h3, .nav-info .v, .toast, etc.) */
   body, body *, .nav-bar, .nav-bar *, .toast, .toast * {
     font-family: 'Pretendard', sans-serif !important;
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
   }
 
   .auth-gate {
