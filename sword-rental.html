@@ -597,7 +597,7 @@ function renderPreviewHero(a) {
   halfBox.classList.add('has-hero');
   const tierColor = TIER_COLORS[a.tier];
   box.innerHTML = `
-    <div>${buildHeroSVG(-1, { size: 38, heroTier: a.tier })}</div>
+    <div>${buildHeroSVG(-1, { size: 80, heroTier: a.tier })}</div>
     <div class="preview-name" style="color:${tierColor}">${a.name}</div>
     <div class="preview-meta">티어 ${a.tier} · 보수 ${a.payRate}%</div>
   `;
@@ -776,7 +776,7 @@ function showApplicantModal(applicantId) {
   $('applicant-modal-title').textContent = `${a.name} 신청서`;
   $('applicant-modal-body').innerHTML = `
     <div class="hero-portrait">
-      <div>${buildHeroSVG(-1, { size: 56, heroTier: a.tier })}</div>
+      <div>${buildHeroSVG(-1, { size: 80, heroTier: a.tier })}</div>
       <div class="hp-name" style="color:${tierColor}">${a.name}</div>
       <div class="hp-tier"><span class="tier-badge" data-tier="${a.tier}">티어 ${a.tier}</span></div>
     </div>
