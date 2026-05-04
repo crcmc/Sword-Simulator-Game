@@ -11,11 +11,16 @@
 <link rel="stylesheet" href="shared.css">
 <style>
   body {
-    font-family: 'Pretendard', monospace;
+    font-family: 'Pretendard', sans-serif;
     background: var(--bg-dark);
     color: var(--text);
     min-height: 100vh;
     margin: 0;
+  }
+  /* Admin page: force Pretendard everywhere — overrides pixel-font rules
+     inherited from shared.css (.btn, .modal h3, .nav-info .v, .toast, etc.) */
+  body, body *, .nav-bar, .nav-bar *, .toast, .toast * {
+    font-family: 'Pretendard', sans-serif !important;
   }
 
   .auth-gate {
@@ -27,10 +32,12 @@
     text-align: center;
   }
   .auth-gate h1 {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 18px;
+    font-family: 'Pretendard', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
     color: #ef4444;
     margin: 0 0 14px;
+    letter-spacing: -0.5px;
   }
   .auth-gate p { font-size: 12px; color: var(--text-dim); margin: 6px 0; }
   .auth-gate a { color: var(--accent); }
@@ -41,11 +48,12 @@
     padding: 0 16px 60px;
   }
   .admin-page > .title {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 18px;
+    font-family: 'Pretendard', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
     color: var(--accent);
-    text-shadow: 3px 3px 0 #000;
-    letter-spacing: 2px;
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: -0.5px;
     margin: 16px 0 6px;
   }
   .admin-page > .desc {
@@ -221,8 +229,9 @@
   .admin-lore-row textarea { resize: vertical; min-height: 36px; }
   .admin-tier-row .tier-idx,
   .admin-name-row .lvl {
-    font-family: 'Press Start 2P', monospace;
-    font-size: 10px;
+    font-family: 'Pretendard', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--accent);
     text-align: center;
   }
