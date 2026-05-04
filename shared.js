@@ -858,53 +858,232 @@ function resolveRentals() {
 }
 
 // =============== HERO + BOSS PIXEL ART ===============
+// Hero SVG — tier-distinguished pixel art chibi. ViewBox 14×16.
+// Each tier has a unique silhouette (helm/hat/horn/crown), cape, and weapon.
+// All tiers share the same base body proportions so animations stay consistent.
 function buildHeroSVG(swordLevel, options) {
   options = options || {};
   const size = options.size || 36;
   const tier = (typeof options.heroTier === 'number') ? options.heroTier
     : (swordLevel >= 0 ? getTier(swordLevel) : 0);
-  const armor = TIER_COLORS[tier] || '#9bd4ff';
-  const armorDark = lerpHex(armor, '#000', 0.5);
-  const swordColor = swordLevel >= 0 ? getSwordPalette(swordLevel).edge : '#cdd5e0';
-  const w = 8, h = 12, px = 1;
-  // Pattern (8 wide × 12 tall):
-  // 0: ..HHHH..  head outline
-  // 1: .HskskH.  skin (s) shadow (k)
-  // 2: .HsHHsH.  hair stripe
-  // 3: ..ssss..  neck/skin
-  // 4: AAAASS.A  body/sword
-  // 5: AaaaSS.a  body/sword
-  // 6: AAAA....  body
-  // 7: .AaaA...
-  // 8: .a..a...  legs
-  // 9: .a..a...
-  // 10: bb..bb..  boots
-  // 11: bb..bb..
-  return `<svg viewBox="0 0 ${w} ${h}" width="${size}" height="${size*1.5}" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
-    <!-- head -->
-    <rect x="2" y="0" width="4" height="1" fill="#3a2a1a"/>
-    <rect x="2" y="1" width="4" height="2" fill="#ffd0a0"/>
-    <rect x="2" y="1" width="4" height="1" fill="#5a4030"/>
-    <rect x="3" y="2" width="1" height="1" fill="#2a1a0a"/>
-    <rect x="4" y="2" width="1" height="1" fill="#2a1a0a"/>
-    <!-- neck -->
-    <rect x="3" y="3" width="2" height="1" fill="#ffd0a0"/>
-    <!-- body -->
-    <rect x="2" y="4" width="4" height="3" fill="${armor}"/>
-    <rect x="2" y="6" width="4" height="1" fill="${armorDark}"/>
-    <!-- arms -->
-    <rect x="1" y="4" width="1" height="3" fill="${armorDark}"/>
-    <rect x="6" y="4" width="1" height="3" fill="${armorDark}"/>
-    <!-- sword (in right hand) -->
-    <rect x="6" y="2" width="1" height="3" fill="${swordColor}"/>
-    <rect x="5" y="4" width="2" height="1" fill="#ffd700"/>
-    <!-- legs -->
-    <rect x="2" y="7" width="2" height="3" fill="#3a2a5e"/>
-    <rect x="4" y="7" width="2" height="3" fill="#3a2a5e"/>
-    <!-- boots -->
-    <rect x="2" y="10" width="2" height="2" fill="#5a3a1a"/>
-    <rect x="4" y="10" width="2" height="2" fill="#5a3a1a"/>
-  </svg>`;
+  const t = Math.max(0, Math.min(5, tier|0));
+  const showSword = swordLevel >= 0;
+  const armor = TIER_COLORS[t] || '#9bd4ff';
+  const armorDark = lerpHex(armor, '#000', 0.55);
+  const armorLight = lerpHex(armor, '#fff', 0.3);
+  const swordEdge = showSword ? getSwordPalette(swordLevel).edge : '#cdd5e0';
+  const swordCore = showSword ? getSwordPalette(swordLevel).core : '#7f8a99';
+  const swordGlow = showSword ? getSwordPalette(swordLevel).glow : 'transparent';
+
+  // Per-tier hair color (gradually lighter / more vibrant)
+  const HAIR_COLORS = ['#3a2a1a', '#1a1a3a', '#3a1a5a', '#5a1a8a', '#8a1010', '#a06010'];
+  const hair = HAIR_COLORS[t];
+  const hairDark = lerpHex(hair, '#000', 0.4);
+
+  // Cape colors (only T2+ have capes; intensity scales with tier)
+  const cape = lerpHex(armor, '#000', 0.25);
+  const capeDark = lerpHex(armor, '#000', 0.5);
+
+  const skin = '#ffd0a0';
+  const skinShadow = '#c89870';
+  const eye = '#1a0a0a';
+  const boots = '#3a2010';
+  const bootsTip = '#1a0808';
+  const pants = '#2a1f3a';
+  const gold = '#ffd700';
+  const goldDark = '#a08000';
+
+  const w = 14, h = 16;
+  // Three z-layers built up separately and concatenated as: back → body → front.
+  let back = '';   // capes (behind body)
+  let body = '';   // skin / armor / legs / boots
+  let front = '';  // hair / headgear / weapon (in front of body)
+
+  // ---- BASE BODY (shared across all tiers) ----
+  // Head (rows 2-5)
+  body += `<rect x="5" y="2" width="4" height="3" fill="${skin}"/>`;
+  body += `<rect x="5" y="2" width="4" height="1" fill="${skinShadow}"/>`;       // forehead shadow
+  body += `<rect x="5" y="4" width="1" height="1" fill="${eye}"/>`;               // left eye
+  body += `<rect x="8" y="4" width="1" height="1" fill="${eye}"/>`;               // right eye
+  // Neck (row 5)
+  body += `<rect x="6" y="5" width="2" height="1" fill="${skinShadow}"/>`;
+  // Torso (rows 6-9)
+  body += `<rect x="4" y="6" width="6" height="4" fill="${armor}"/>`;
+  body += `<rect x="4" y="9" width="6" height="1" fill="${armorDark}"/>`;
+  body += `<rect x="4" y="6" width="1" height="4" fill="${armorDark}"/>`;
+  body += `<rect x="9" y="6" width="1" height="4" fill="${armorDark}"/>`;
+  // Arms (rows 6-8)
+  body += `<rect x="3" y="7" width="1" height="2" fill="${armorDark}"/>`;          // left arm
+  body += `<rect x="10" y="7" width="1" height="2" fill="${armorDark}"/>`;         // right arm (sword side)
+  // Hands (skin tone tip)
+  body += `<rect x="3" y="9" width="1" height="1" fill="${skin}"/>`;
+  body += `<rect x="10" y="9" width="1" height="1" fill="${skin}"/>`;
+  // Pelvis (row 10)
+  body += `<rect x="5" y="10" width="4" height="1" fill="${armorDark}"/>`;
+  // Legs (rows 11-13)
+  body += `<rect x="5" y="11" width="2" height="3" fill="${pants}"/>`;
+  body += `<rect x="7" y="11" width="2" height="3" fill="${pants}"/>`;
+  // Boots (rows 14-15)
+  body += `<rect x="5" y="14" width="2" height="2" fill="${boots}"/>`;
+  body += `<rect x="7" y="14" width="2" height="2" fill="${boots}"/>`;
+  body += `<rect x="5" y="15" width="2" height="1" fill="${bootsTip}"/>`;
+  body += `<rect x="7" y="15" width="2" height="1" fill="${bootsTip}"/>`;
+
+  // ---- TIER-SPECIFIC OVERLAYS ----
+  // Hair (row 1-2) — visible amount varies by headgear
+  const hairFn = (showAmount) => {
+    let s = '';
+    if (showAmount === 'full') {
+      s += `<rect x="4" y="1" width="6" height="2" fill="${hair}"/>`;
+      s += `<rect x="4" y="2" width="1" height="2" fill="${hair}"/>`;
+      s += `<rect x="9" y="2" width="1" height="2" fill="${hair}"/>`;
+      s += `<rect x="4" y="1" width="6" height="1" fill="${hairDark}"/>`;
+    } else if (showAmount === 'sides') {
+      // hair only at sides of face under helmet
+      s += `<rect x="4" y="3" width="1" height="2" fill="${hair}"/>`;
+      s += `<rect x="9" y="3" width="1" height="2" fill="${hair}"/>`;
+    }
+    return s;
+  };
+
+  // Cape (rows 6-12) — for T2+
+  const capeFn = (style) => {
+    let s = '';
+    if (style === 'short') {
+      s += `<rect x="3" y="6" width="1" height="5" fill="${cape}"/>`;
+      s += `<rect x="10" y="6" width="1" height="5" fill="${cape}"/>`;
+    } else if (style === 'long') {
+      s += `<rect x="2" y="6" width="1" height="6" fill="${cape}"/>`;
+      s += `<rect x="11" y="6" width="1" height="6" fill="${cape}"/>`;
+      s += `<rect x="2" y="11" width="2" height="1" fill="${capeDark}"/>`;
+      s += `<rect x="10" y="11" width="2" height="1" fill="${capeDark}"/>`;
+    } else if (style === 'flowing') {
+      s += `<rect x="2" y="6" width="1" height="7" fill="${cape}"/>`;
+      s += `<rect x="11" y="6" width="1" height="7" fill="${cape}"/>`;
+      s += `<rect x="1" y="9" width="1" height="3" fill="${cape}"/>`;
+      s += `<rect x="12" y="9" width="1" height="3" fill="${cape}"/>`;
+      s += `<rect x="2" y="12" width="2" height="1" fill="${capeDark}"/>`;
+      s += `<rect x="10" y="12" width="2" height="1" fill="${capeDark}"/>`;
+      s += `<rect x="1" y="11" width="1" height="1" fill="${capeDark}"/>`;
+      s += `<rect x="12" y="11" width="1" height="1" fill="${capeDark}"/>`;
+    }
+    return s;
+  };
+
+  // Weapon variants (held by right hand near x=10, y=7-9)
+  const weaponFn = (kind) => {
+    if (!showSword) return '';
+    let s = '';
+    if (kind === 'dagger') {
+      // short blade pointing up-right
+      s += `<rect x="11" y="6" width="1" height="3" fill="${swordEdge}"/>`;
+      s += `<rect x="11" y="9" width="1" height="1" fill="${gold}"/>`;
+    } else if (kind === 'longsword') {
+      s += `<rect x="11" y="3" width="1" height="6" fill="${swordEdge}"/>`;
+      s += `<rect x="11" y="2" width="1" height="1" fill="${swordCore}"/>`;
+      s += `<rect x="10" y="9" width="3" height="1" fill="${gold}"/>`;
+      s += `<rect x="11" y="10" width="1" height="2" fill="${goldDark}"/>`;
+    } else if (kind === 'staff') {
+      s += `<rect x="11" y="2" width="1" height="9" fill="#5a3a1a"/>`;
+      s += `<rect x="10" y="2" width="3" height="2" fill="${swordEdge}"/>`;
+      s += `<rect x="11" y="2" width="1" height="1" fill="${swordCore}"/>`;
+      s += `<rect x="10" y="2" width="1" height="1" fill="${swordCore}" opacity="0.6"/>`;
+      s += `<rect x="12" y="2" width="1" height="1" fill="${swordCore}" opacity="0.6"/>`;
+    } else if (kind === 'greatsword') {
+      s += `<rect x="11" y="1" width="2" height="8" fill="${swordEdge}"/>`;
+      s += `<rect x="11" y="0" width="2" height="1" fill="${swordCore}"/>`;
+      s += `<rect x="10" y="9" width="4" height="1" fill="${gold}"/>`;
+      s += `<rect x="11" y="10" width="2" height="2" fill="${goldDark}"/>`;
+    } else if (kind === 'flame') {
+      s += `<rect x="11" y="2" width="1" height="7" fill="${swordEdge}"/>`;
+      s += `<rect x="12" y="3" width="1" height="2" fill="#ff4020" opacity="0.85"/>`;
+      s += `<rect x="12" y="6" width="1" height="2" fill="#ff8020" opacity="0.7"/>`;
+      s += `<rect x="10" y="9" width="3" height="1" fill="${gold}"/>`;
+      s += `<rect x="11" y="10" width="1" height="2" fill="${goldDark}"/>`;
+    } else if (kind === 'legend') {
+      s += `<rect x="11" y="0" width="1" height="9" fill="${swordEdge}"/>`;
+      s += `<rect x="11" y="0" width="1" height="2" fill="${swordCore}"/>`;
+      s += `<rect x="12" y="2" width="1" height="6" fill="${swordEdge}" opacity="0.6"/>`;
+      s += `<rect x="10" y="2" width="1" height="6" fill="${swordEdge}" opacity="0.6"/>`;
+      s += `<rect x="9" y="9" width="5" height="1" fill="${gold}"/>`;
+      s += `<rect x="11" y="10" width="1" height="2" fill="${goldDark}"/>`;
+    }
+    return s;
+  };
+
+  // Headgear + tier-specific touches
+  // Each branch sets back (cape) and front (hair/helmet/weapon) layers.
+  if (t === 0) {
+    // Apprentice — bandana, dagger
+    front += hairFn('full');
+    front += `<rect x="4" y="2" width="6" height="1" fill="#8b3030"/>`;             // bandana
+    front += `<rect x="4" y="2" width="1" height="1" fill="#5a1818"/>`;
+    front += weaponFn('dagger');
+  } else if (t === 1) {
+    // Knight — closed helmet with visor, longsword
+    front += hairFn('sides');
+    front += `<rect x="4" y="0" width="6" height="2" fill="${armorLight}"/>`;      // helmet top
+    front += `<rect x="4" y="2" width="6" height="3" fill="${armor}"/>`;           // helmet body
+    front += `<rect x="4" y="2" width="6" height="1" fill="${armorDark}"/>`;       // brim shadow
+    front += `<rect x="4" y="3" width="6" height="1" fill="#0a0a0a"/>`;            // visor slit
+    front += `<rect x="5" y="3" width="1" height="1" fill="#ff8020"/>`;            // visor glow L
+    front += `<rect x="8" y="3" width="1" height="1" fill="#ff8020"/>`;            // visor glow R
+    front += `<rect x="6" y="0" width="2" height="1" fill="${gold}"/>`;            // plume base
+    front += weaponFn('longsword');
+  } else if (t === 2) {
+    // Mage — pointed hat + short cape, staff
+    back  += capeFn('short');
+    front += hairFn('full');
+    front += `<rect x="6" y="0" width="2" height="1" fill="${armorDark}"/>`;       // hat tip
+    front += `<rect x="5" y="1" width="4" height="1" fill="${armor}"/>`;           // upper hat
+    front += `<rect x="3" y="2" width="8" height="1" fill="${armor}"/>`;           // hat brim
+    front += `<rect x="3" y="2" width="8" height="1" fill="${armorDark}"/>`;       // brim shadow
+    front += `<rect x="6" y="0" width="1" height="1" fill="${gold}"/>`;            // gold star tip
+    front += weaponFn('staff');
+  } else if (t === 3) {
+    // Hero — small crown + long cape, greatsword
+    back  += capeFn('long');
+    front += hairFn('full');
+    front += `<rect x="5" y="1" width="4" height="1" fill="${gold}"/>`;            // crown band
+    front += `<rect x="5" y="0" width="1" height="1" fill="${gold}"/>`;            // tip 1
+    front += `<rect x="7" y="0" width="1" height="1" fill="${gold}"/>`;            // tip 2
+    front += `<rect x="9" y="0" width="1" height="1" fill="${gold}"/>`;            // tip 3
+    front += `<rect x="5" y="2" width="4" height="1" fill="${goldDark}"/>`;        // shadow under crown
+    front += `<rect x="6" y="7" width="2" height="1" fill="${gold}"/>`;            // chest emblem
+    front += weaponFn('greatsword');
+  } else if (t === 4) {
+    // Inferno — horned helmet + long cape, flame sword
+    back  += capeFn('long');
+    front += hairFn('sides');
+    front += `<rect x="3" y="0" width="1" height="2" fill="${armorDark}"/>`;       // left horn
+    front += `<rect x="10" y="0" width="1" height="2" fill="${armorDark}"/>`;      // right horn
+    front += `<rect x="4" y="1" width="6" height="2" fill="${armor}"/>`;           // helm body
+    front += `<rect x="4" y="2" width="6" height="1" fill="${armorDark}"/>`;       // helm shadow
+    front += `<rect x="5" y="3" width="1" height="1" fill="#ff4020"/>`;            // glowing eye L
+    front += `<rect x="8" y="3" width="1" height="1" fill="#ff4020"/>`;            // glowing eye R
+    front += `<rect x="6" y="0" width="2" height="1" fill="${armorDark}"/>`;       // spike top
+    front += weaponFn('flame');
+  } else if (t === 5) {
+    // Legendary — winged crown + flowing cape, legendary blade
+    back  += capeFn('flowing');
+    front += hairFn('full');
+    front += `<rect x="3" y="1" width="1" height="2" fill="${gold}"/>`;            // left wing inner
+    front += `<rect x="2" y="2" width="1" height="1" fill="${gold}"/>`;            // left wing outer
+    front += `<rect x="10" y="1" width="1" height="2" fill="${gold}"/>`;           // right wing inner
+    front += `<rect x="11" y="2" width="1" height="1" fill="${gold}"/>`;           // right wing outer
+    front += `<rect x="4" y="2" width="6" height="1" fill="${gold}"/>`;            // crown band
+    front += `<rect x="5" y="1" width="1" height="1" fill="${gold}"/>`;            // crown tip 1
+    front += `<rect x="7" y="1" width="1" height="1" fill="${gold}"/>`;            // crown tip 2
+    front += `<rect x="7" y="0" width="1" height="1" fill="#ff60ff"/>`;            // pink jewel
+    front += `<rect x="9" y="1" width="1" height="1" fill="${gold}"/>`;            // crown tip 3
+    front += `<rect x="6" y="7" width="2" height="2" fill="${gold}"/>`;            // chest emblem
+    front += `<rect x="6" y="7" width="2" height="1" fill="#fff8c0"/>`;
+    front += weaponFn('legend');
+  } else {
+    front += hairFn('full');
+  }
+
+  return `<svg viewBox="0 0 ${w} ${h}" width="${size}" height="${size * h / w}" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">${back}${body}${front}</svg>`;
 }
 
 function buildBossSVG(tier, options) {
