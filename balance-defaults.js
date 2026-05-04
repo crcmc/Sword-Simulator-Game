@@ -169,6 +169,14 @@ const BALANCE_DEFAULTS = {
   "tierMismatchTimeBonus": 20,
   "tierMismatchTimePenalty": 10,
   "floorTimeMultiplier": 0.1,
+  "summonWeights": {
+    "0": [0.4, 0.3, 0.15, 0.1, 0.05],
+    "1": [0.4, 0.3, 0.15, 0.1, 0.05],
+    "2": [0.4, 0.3, 0.15, 0.1, 0.05],
+    "3": [0.4, 0.3, 0.15, 0.1, 0.05],
+    "4": [0.4, 0.3, 0.15, 0.1, 0.05],
+    "5": [0.4, 0.3, 0.2, 0.1]
+  },
   "applicantBaseIntervalMs": 10000,
   "applicantMaxPerSword": 10,
   "applicantMaxTotal": 100,

@@ -3148,9 +3148,9 @@ function renderSummonPanel() {
   for (let t = 0; t < 6; t++) {
     const resKey = RESOURCE_KEYS[t];
     const have = (state.resources && state.resources[resKey]) || 0;
-    const { min: tierMin, max: tierMax } = tierBounds(t);
-    const minCost = getSummonCost(tierMin);
-    const maxCost = getSummonCost(tierMax);
+    const range = summonRange(t);
+    const minCost = getSummonCost(range.min);
+    const maxCost = getSummonCost(range.max);
     const tierColor = TIER_COLORS[t];
     const enough = cheats.infiniteMaterials || have >= minCost;
     const disabled = enough && !busy ? '' : 'disabled';
@@ -3162,7 +3162,7 @@ function renderSummonPanel() {
         </div>
         <div class="info">
           <span class="cost">${minCost}~${maxCost} ${balance.resourceNames[t]}</span>
-          <span class="out">+${tierMin}~+${tierMax} 무작위</span>
+          <span class="out">+${range.min}~+${range.max} 가중치</span>
         </div>
       </div>
     `;
@@ -3532,14 +3532,39 @@ function tierBounds(tier) {
   return { min, max };
 }
 
+// Summon-only range — excludes +0 (starting forge level) and +30 (cannot summon legendary).
+function summonRange(tier) {
+  if (tier === 0) return { min: 1, max: 5 };
+  if (tier === 5) return { min: 26, max: 29 };
+  return tierBounds(tier);
+}
+
 function getSummonCost(level) {
   const sublevel = getSubLevel(level);
   return Math.max(1, balance.summonBaseCost) * Math.pow(2, sublevel);
 }
 
 function getSummonCostRange(tier) {
-  const { min, max } = tierBounds(tier);
+  const { min, max } = summonRange(tier);
   return { minCost: getSummonCost(min), maxCost: getSummonCost(max) };
+}
+
+// Pick a level within summonRange(tier), weighted by balance.summonWeights[tier].
+// Falls back to uniform if weights missing or invalid.
+function rollSummonLevel(tier) {
+  const range = summonRange(tier);
+  const N = range.max - range.min + 1;
+  const cfg = (balance.summonWeights && balance.summonWeights[tier]) || null;
+  const w = (Array.isArray(cfg) && cfg.length === N) ? cfg.slice() : new Array(N).fill(1 / N);
+  // Normalize in case admin entered values that don't sum to 1
+  const total = w.reduce((s, v) => s + (v > 0 ? v : 0), 0) || N;
+  const rand = Math.random() * total;
+  let acc = 0;
+  for (let i = 0; i < N; i++) {
+    acc += Math.max(0, w[i]);
+    if (rand <= acc) return range.min + i;
+  }
+  return range.max;
 }
 
 function summonTier(tier) {
@@ -3548,22 +3573,22 @@ function summonTier(tier) {
   const resKey = RESOURCE_KEYS[tier];
   if (!state.resources) state.resources = { iron: 0, steel: 0, mystic: 0, crystal: 0, inferno: 0, legendary: 0 };
   const have = state.resources[resKey] || 0;
-  const { min: tierMin, max: tierMax } = tierBounds(tier);
-  const minCost = getSummonCost(tierMin);
+  const range = summonRange(tier);
+  const minCost = getSummonCost(range.min);
 
   if (have < minCost && !cheats.infiniteMaterials) {
     showToast(`${balance.resourceNames[tier]} 부족 (최소 ${minCost})`, 'fail');
     return;
   }
 
-  // Roll uniform within tier range
-  let rolledLevel = tierMin + Math.floor(Math.random() * (tierMax - tierMin + 1));
+  // Weighted roll within summon range (excludes +0 in T0, +30 in T5)
+  let rolledLevel = rollSummonLevel(tier);
   let cost = getSummonCost(rolledLevel);
   let downgraded = false;
 
-  // Downgrade if can't afford the rolled level
+  // Downgrade if can't afford the rolled level (floor at summon range minimum)
   if (!cheats.infiniteMaterials) {
-    while (cost > have && rolledLevel > tierMin) {
+    while (cost > have && rolledLevel > range.min) {
       rolledLevel -= 1;
       cost = getSummonCost(rolledLevel);
       downgraded = true;
