@@ -2942,7 +2942,7 @@ function render() {
   $('top-gold').textContent = state.gold.toLocaleString();
   $('top-frag').textContent = state.fragments;
   $('top-stone').textContent = state.stones;
-  $('top-protect').textContent = state.protections;
+  $('top-protect').textContent = state.protections.toLocaleString();
 
   // Resources bar (6 tier resources)
   const resKeys = ['iron','steel','mystic','crystal','inferno','legendary'];
@@ -3967,7 +3967,9 @@ function buyProtect(amount) {
   if (!cheats.infiniteGold && state.gold < price) { showToast('골드 부족', 'fail'); return; }
   if (!cheats.infiniteGold) state.gold -= price;
   state.stats.goldSpent += price;
-  state.protections = Math.min(state.protections + amount, 99);
+  // Protect stones can be needed in large quantities at high enhancement levels
+  // (default cost: +30 → 1024개). Cap raised to 9999 to avoid blocking purchases.
+  state.protections = Math.min(state.protections + amount, 9999);
   playSound('cash');
   logMsg(`🛒 보호석 ${amount}개 구매 (-${price.toLocaleString()} G)`, 'gain');
   showToast(`보호석 +${amount}`, 'sell');
