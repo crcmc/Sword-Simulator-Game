@@ -66,6 +66,8 @@ function populateForm() {
   $('ad-shopStone').value = balance.shopStone;
   $('ad-shopProtect1').value = balance.shopProtect1;
   $('ad-shopProtect10').value = balance.shopProtect10;
+  $('ad-shopTicket1').value = balance.shopTicket1 != null ? balance.shopTicket1 : 5000000;
+  $('ad-shopTicket10').value = balance.shopTicket10 != null ? balance.shopTicket10 : 30000000;
 
   // Items
   $('ad-fragmentBonus').value = balance.fragmentBonus;
@@ -222,6 +224,8 @@ function readForm() {
   next.shopStone = intv('ad-shopStone');
   next.shopProtect1 = intv('ad-shopProtect1');
   next.shopProtect10 = intv('ad-shopProtect10');
+  next.shopTicket1 = intv('ad-shopTicket1');
+  next.shopTicket10 = intv('ad-shopTicket10');
   next.fragmentBonus = num('ad-fragmentBonus');
   next.stoneBonusEach = num('ad-stoneBonusEach');
   next.stoneMaxStack = intv('ad-stoneMaxStack');

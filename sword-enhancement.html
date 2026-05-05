@@ -1587,9 +1587,13 @@
 
       <div class="shop-divider">─── 상 점 ───</div>
       <div class="shop-list">
-        <button class="shop-btn" id="buy-stone-btn">
-          <span>강화석 1개 구매</span>
-          <span class="price">100,000 G</span>
+        <button class="shop-btn" id="buy-ticket1-btn">
+          <span>+15강 강화권 1개</span>
+          <span class="price">5,000,000 G</span>
+        </button>
+        <button class="shop-btn bulk" id="buy-ticket10-btn">
+          <span>+15강 강화권 10개 묶음</span>
+          <span class="price">30,000,000 G</span>
         </button>
         <button class="shop-btn" id="buy-protect1-btn">
           <span>보호석 1개 구매</span>
@@ -2051,6 +2055,8 @@ let TIER_LORE = balance.tierLore;
 let SHOP_PRICE_STONE = balance.shopStone;
 let SHOP_PRICE_PROTECT_1 = balance.shopProtect1;
 let SHOP_PRICE_PROTECT_10 = balance.shopProtect10;
+let SHOP_PRICE_TICKET_1 = balance.shopTicket1;
+let SHOP_PRICE_TICKET_10 = balance.shopTicket10;
 
 function applyBalance() {
   SUCCESS_RATES = balance.successRates;
@@ -2061,6 +2067,8 @@ function applyBalance() {
   SHOP_PRICE_STONE = balance.shopStone;
   SHOP_PRICE_PROTECT_1 = balance.shopProtect1;
   SHOP_PRICE_PROTECT_10 = balance.shopProtect10;
+  SHOP_PRICE_TICKET_1 = balance.shopTicket1;
+  SHOP_PRICE_TICKET_10 = balance.shopTicket10;
   saveBalance();
   if (typeof render === 'function') render();
 }
@@ -2213,6 +2221,7 @@ function defaultState() {
     fragments: 0,
     stones: 0,
     protections: 0,
+    tickets: 0,
     useFragment: false,
     useStones: 0,
     useProtection: false,
@@ -2895,6 +2904,39 @@ function buildProtectSVG() {
     <rect x="7" y="14" width="2" height="1" fill="#0f766e"/></svg>`;
 }
 
+function buildTicketSVG() {
+  // Golden voucher / scroll with red wax seal stamped "+15"
+  return `<svg viewBox="0 0 16 16" width="36" height="36" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <!-- paper body -->
+    <rect x="2" y="3" width="12" height="10" fill="#fff8c0"/>
+    <rect x="2" y="3" width="12" height="1" fill="#d4a020"/>
+    <rect x="2" y="12" width="12" height="1" fill="#d4a020"/>
+    <rect x="2" y="3" width="1" height="10" fill="#a08000"/>
+    <rect x="13" y="3" width="1" height="10" fill="#a08000"/>
+    <!-- corner cut (decorative) -->
+    <rect x="2" y="3" width="1" height="1" fill="#0a0716"/>
+    <rect x="13" y="3" width="1" height="1" fill="#0a0716"/>
+    <rect x="2" y="12" width="1" height="1" fill="#0a0716"/>
+    <rect x="13" y="12" width="1" height="1" fill="#0a0716"/>
+    <!-- "+15" text (drawn as pixel art) -->
+    <!-- + -->
+    <rect x="4" y="6" width="1" height="3" fill="#5a3a1a"/>
+    <rect x="3" y="7" width="3" height="1" fill="#5a3a1a"/>
+    <!-- 1 -->
+    <rect x="7" y="6" width="1" height="3" fill="#5a3a1a"/>
+    <rect x="6" y="6" width="2" height="1" fill="#5a3a1a"/>
+    <!-- 5 -->
+    <rect x="9" y="6" width="3" height="1" fill="#5a3a1a"/>
+    <rect x="9" y="7" width="1" height="1" fill="#5a3a1a"/>
+    <rect x="9" y="8" width="3" height="1" fill="#5a3a1a"/>
+    <rect x="11" y="9" width="1" height="1" fill="#5a3a1a"/>
+    <rect x="9" y="10" width="3" height="1" fill="#5a3a1a"/>
+    <!-- red wax seal -->
+    <rect x="11" y="9" width="3" height="3" fill="#a01010"/>
+    <rect x="12" y="10" width="1" height="1" fill="#ff8080"/>
+  </svg>`;
+}
+
 // ----- DOM refs -----
 const $ = id => document.getElementById(id);
 const swordContainer = $('sword-container');
@@ -3034,8 +3076,10 @@ function render() {
   }
 
   // Shop buttons
-  $('buy-stone-btn').innerHTML = `<span>강화석 1개 구매</span><span class="price">${SHOP_PRICE_STONE.toLocaleString()} G</span>`;
-  $('buy-stone-btn').disabled = busy || state.gold < SHOP_PRICE_STONE;
+  $('buy-ticket1-btn').innerHTML = `<span>+15강 강화권 1개</span><span class="price">${SHOP_PRICE_TICKET_1.toLocaleString()} G</span>`;
+  $('buy-ticket1-btn').disabled = busy || state.gold < SHOP_PRICE_TICKET_1;
+  $('buy-ticket10-btn').innerHTML = `<span>+15강 강화권 10개 묶음</span><span class="price">${SHOP_PRICE_TICKET_10.toLocaleString()} G</span>`;
+  $('buy-ticket10-btn').disabled = busy || state.gold < SHOP_PRICE_TICKET_10;
   $('buy-protect1-btn').innerHTML = `<span>보호석 1개 구매</span><span class="price">${SHOP_PRICE_PROTECT_1.toLocaleString()} G</span>`;
   $('buy-protect1-btn').disabled = busy || state.gold < SHOP_PRICE_PROTECT_1;
   $('buy-protect10-btn').innerHTML = `<span>보호석 10개 묶음</span><span class="price">${SHOP_PRICE_PROTECT_10.toLocaleString()} G</span>`;
@@ -3120,6 +3164,20 @@ function renderItems() {
         if (state.useProtection) return '사용 중 (취소)';
         return c === 0 ? '사용 (무료)' : `사용 (${c}개)`;
       }
+    },
+    {
+      key: 'ticket',
+      name: '+15강 강화권',
+      desc: state.level >= 15
+        ? '이미 +15 이상 — 사용 불가'
+        : `현재 +${state.level} 검을 즉시 +15로 (1장 소모)`,
+      icon: buildTicketSVG(),
+      count: state.tickets || 0,
+      active: false,
+      // disable button when no tickets OR level >= 15
+      cost: state.level >= 15 ? 9999 : 1,
+      onToggle: () => useTicket(),
+      btnText: () => state.level >= 15 ? '사용 불가' : '사용'
     }
   ];
   itemListEl.innerHTML = '';
@@ -3950,6 +4008,8 @@ async function storeSword() {
 
 // ----- Shop actions -----
 function buyStone() {
+  // Legacy buyer kept for compat (no UI button currently, stones now drop from
+  // dungeons / failures only). Functionality preserved in case admin re-enables.
   if (busy) return;
   if (!cheats.infiniteGold && state.gold < SHOP_PRICE_STONE) { showToast('골드 부족', 'fail'); return; }
   if (!cheats.infiniteGold) state.gold -= SHOP_PRICE_STONE;
@@ -3959,6 +4019,48 @@ function buyStone() {
   logMsg(`🛒 강화석 1개 구매 (-${SHOP_PRICE_STONE.toLocaleString()} G)`, 'gain');
   showToast('강화석 +1', 'sell');
   saveState(); render();
+}
+
+// Buy +15 enhancement ticket(s).
+function buyTicket(amount) {
+  if (busy) return;
+  const price = amount === 10 ? SHOP_PRICE_TICKET_10 : SHOP_PRICE_TICKET_1;
+  if (!cheats.infiniteGold && state.gold < price) { showToast('골드 부족', 'fail'); return; }
+  if (!cheats.infiniteGold) state.gold -= price;
+  state.stats.goldSpent += price;
+  state.tickets = Math.min((state.tickets || 0) + amount, 9999);
+  playSound('cash');
+  logMsg(`🛒 +15강 강화권 ${amount}개 구매 (-${price.toLocaleString()} G)`, 'gain');
+  showToast(`강화권 +${amount}`, 'sell');
+  saveState(); render();
+}
+
+// Use one +15 ticket — instantly bring current sword to +15.
+// Conditions: current level ≤ 14, ticket count ≥ 1.
+async function useTicket() {
+  if (busy) return;
+  if ((state.tickets || 0) <= 0) { showToast('강화권 없음', 'fail'); return; }
+  if (state.level >= 15) { showToast('이미 +15 이상 — 사용 불가', 'fail'); return; }
+  const prevLevel = state.level;
+  state.tickets -= 1;
+  state.level = 15;
+  state.unlocked[15] = true;
+  state.stats.attempts = (state.stats.attempts || 0) + 1;
+  state.stats.success = (state.stats.success || 0) + 1;
+  if (state.level > (state.stats.best || 0)) state.stats.best = state.level;
+  // Unlock all intermediate levels too (cosmetic — collection grid will show them)
+  for (let i = prevLevel + 1; i <= 15; i++) state.unlocked[i] = true;
+  logMsg(`✦ +15강 강화권 사용! +${prevLevel} → +15 ${SWORD_NAMES[15]}`, 'unlock');
+  showToast(`+15 ${SWORD_NAMES[15]} 획득!`, 'success');
+  playSound('success');
+  saveState();
+  render();
+  // Visual feedback
+  clearAnims();
+  void swordContainer.offsetWidth;
+  swordContainer.classList.add('success');
+  const palette = getSwordPalette(15);
+  spawnParticles(30, palette.jewel);
 }
 
 function buyProtect(amount) {
@@ -4306,7 +4408,8 @@ function debugWipeAll() {
 enhanceBtn.addEventListener('click', attemptEnhance);
 sellBtn.addEventListener('click', sellSword);
 storeBtn.addEventListener('click', storeSword);
-$('buy-stone-btn').addEventListener('click', buyStone);
+$('buy-ticket1-btn').addEventListener('click', () => buyTicket(1));
+$('buy-ticket10-btn').addEventListener('click', () => buyTicket(10));
 $('buy-protect1-btn').addEventListener('click', () => buyProtect(1));
 $('buy-protect10-btn').addEventListener('click', () => buyProtect(10));
 

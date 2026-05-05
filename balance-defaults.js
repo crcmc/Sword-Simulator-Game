@@ -25,6 +25,8 @@ const BALANCE_DEFAULTS = {
   "shopStone": 100000,
   "shopProtect1": 2000000,
   "shopProtect10": 15000000,
+  "shopTicket1": 5000000,
+  "shopTicket10": 30000000,
   "fragmentBonus": 10,
   "stoneBonusEach": 5,
   "stoneMaxStack": 3,
