@@ -287,6 +287,39 @@
     50% { transform: translateY(-6px); }
   }
 
+  /* Floating HP bars above hero/boss during the fight phase */
+  .corridor .hp-bar {
+    position: absolute;
+    bottom: 50px;            /* sits just above the 48px boss / 28px hero */
+    width: 36px;
+    height: 6px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 2px;
+    overflow: hidden;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.25s linear;
+    pointer-events: none;
+  }
+  .corridor .hp-bar.show { opacity: 1; }
+  .corridor .hp-bar .hp-fill {
+    height: 100%;
+    width: 100%;
+    transition: width 0.45s linear, background-color 0.3s linear;
+    background: var(--success, #4ade80);
+  }
+  .corridor .hp-bar.hero-hp {
+    /* Hero hp bar follows the hero — JS sets `left` in sync with .hero */
+  }
+  .corridor .hp-bar.hero-hp .hp-fill { background: #4ade80; }
+  .corridor .hp-bar.hero-hp .hp-fill.low { background: #ec4899; }
+  .corridor .hp-bar.boss-hp {
+    right: 8px;              /* boss is right:4 + width 48; bar is 36px → centered-ish */
+  }
+  .corridor .hp-bar.boss-hp .hp-fill { background: #ef4444; }
+  .corridor .hp-bar.boss-hp .hp-fill.low { background: #fbbf24; }
+
   /* Hero info row above corridor */
   .hero-info {
     display: flex;
@@ -564,36 +597,57 @@ function renderFloorSection(f, bestFloor, cfg) {
   `;
 }
 
+// Compute hero fight position so it ends right next to the boss regardless of
+// corridor width. Boss is right:4 + width 48 + small gap 8 → 60px from right.
+// Hero is 28px wide. Returns the fighting-phase left% for a given corridor width.
+function heroFightLeftPct(corridorWidth) {
+  if (!corridorWidth || corridorWidth < 100) return 78; // safe fallback for first render
+  return ((corridorWidth - 60 - 28) / corridorWidth) * 100;
+}
+
 function renderCorridor(r) {
   const now = Date.now();
-  const total = r.endTime - r.startTime;
+  // Phase progress is always against the FULL duration so the going/fighting
+  // visuals stay consistent regardless of whether the rental will return.
+  // Failed rentals just have endTime cut at progress=0.75 (hero dies, no return).
+  const totalForPhase = (typeof r.fullDurationMs === 'number' && r.fullDurationMs > 0)
+    ? r.fullDurationMs
+    : (r.endTime - r.startTime);
   const elapsed = now - r.startTime;
-  const progress = Math.max(0, Math.min(1, elapsed / total));
+  const progress = Math.max(0, Math.min(1, elapsed / totalForPhase));
+  const isFail = r.outcome === 'fail';
 
-  // Phase boundaries: 0-25% out, 25-75% fight, 75-100% return
+  // Phase boundaries: 0-25% out, 25-75% fight, 75-100% return (success only)
   const PH_OUT = 0.25;
   const PH_BACK = 0.75;
   let phase, heroLeft, heroClass = '', bossClass = '', countdownLabel, countdownClass;
   const remainingMs = Math.max(0, r.endTime - now);
+  const fightLeft = heroFightLeftPct(0);
 
   if (progress < PH_OUT) {
     phase = 'going';
-    // Hero moves from ~5% to ~78% of corridor width
     const t = progress / PH_OUT;
-    heroLeft = 4 + t * 70;
+    heroLeft = 4 + t * (fightLeft - 4);
     countdownLabel = `${formatDur(remainingMs)} (이동 중)`;
     countdownClass = '';
   } else if (progress < PH_BACK) {
     phase = 'fighting';
-    heroLeft = 74;
+    heroLeft = fightLeft;
     heroClass = 'fighting';
     bossClass = 'fighting';
     countdownLabel = `${formatDur(remainingMs)} (보스 전투 중)`;
     countdownClass = 'boss';
+  } else if (isFail) {
+    // Failed mission: hero dies at fight end, no return phase.
+    phase = 'died';
+    heroLeft = fightLeft;
+    heroClass = 'dying';
+    countdownLabel = '미션 실패 — 검 손실';
+    countdownClass = 'boss';
   } else if (progress < 1) {
     phase = 'returning';
     const t = (progress - PH_BACK) / (1 - PH_BACK);
-    heroLeft = 74 - t * 70;
+    heroLeft = fightLeft - t * (fightLeft - 4);
     countdownLabel = `${formatDur(remainingMs)} (귀환 중)`;
     countdownClass = 'return';
     bossClass = 'dead';
@@ -606,7 +660,7 @@ function renderCorridor(r) {
   }
 
   const swordName = SWORD_NAMES[r.swordLevel] || `+${r.swordLevel}`;
-  const phaseTag = ({going:'⏩ 이동', fighting:'⚔ 전투', returning:'🏃 귀환', done:''})[phase] || '';
+  const phaseTag = ({going:'⏩ 이동', fighting:'⚔ 전투', returning:'🏃 귀환', done:'', died:'💀 사망'})[phase] || '';
   const gap = getTier(r.swordLevel) - r.dungeonTier;
   const cfg = balance.dungeons[r.dungeonTier];
   const rate = (typeof r.adjustedSuccessRate === 'number') ? r.adjustedSuccessRate : cfg.successRate;
@@ -616,16 +670,136 @@ function renderCorridor(r) {
   else gapBadge = `<span style="color:var(--text-dim); font-size:9px; margin-left:6px;">매치 (${rate}%)</span>`;
 
   return `
-    <div class="hero-info">
-      <span><span class="name">${escapeHtml(r.heroName)}</span> <span class="badge">+${r.swordLevel}</span> <span style="color:var(--text-dim);">${escapeHtml(swordName)}</span>${gapBadge}</span>
-      <span class="countdown ${countdownClass}">${countdownLabel} <span class="phase-tag">${phaseTag}</span></span>
-    </div>
-    <div class="corridor t${r.dungeonTier}">
-      <span class="entrance">▶</span>
-      <div class="boss ${bossClass}">${buildBossSVG(r.dungeonTier, { size: 48 })}</div>
-      <div class="hero ${heroClass}" style="left: ${heroLeft}%">${buildHeroSVG(r.swordLevel, { size: 28 })}</div>
+    <div class="hero-corridor" data-id="${escapeHtml(r.id)}">
+      <div class="hero-info">
+        <span><span class="name">${escapeHtml(r.heroName)}</span> <span class="badge">+${r.swordLevel}</span> <span style="color:var(--text-dim);">${escapeHtml(swordName)}</span>${gapBadge}</span>
+        <span class="countdown ${countdownClass}">${countdownLabel} <span class="phase-tag">${phaseTag}</span></span>
+      </div>
+      <div class="corridor t${r.dungeonTier}">
+        <span class="entrance">▶</span>
+        <div class="hp-bar boss-hp"><div class="hp-fill"></div></div>
+        <div class="boss ${bossClass}">${buildBossSVG(r.dungeonTier, { size: 48 })}</div>
+        <div class="hp-bar hero-hp" style="left: ${heroLeft}%"><div class="hp-fill"></div></div>
+        <div class="hero ${heroClass}" style="left: ${heroLeft}%">${buildHeroSVG(r.swordLevel, { size: 28 })}</div>
+      </div>
     </div>
   `;
+}
+
+// In-place per-tick refresh: hero position, boss/hero phase classes, and the
+// countdown line. Avoids the full floor-list innerHTML rebuild every 500ms
+// when nothing structural (rentals/dead pile) changed.
+function tickUpdateCorridors(now) {
+  const list = $('floor-list');
+  if (!list) return;
+  const rentals = state.rentals || [];
+  for (const r of rentals) {
+    const root = list.querySelector(`.hero-corridor[data-id="${CSS.escape(r.id)}"]`);
+    if (!root) continue;
+    const corridorEl = root.querySelector('.corridor');
+    const fightLeft = heroFightLeftPct(corridorEl ? corridorEl.clientWidth : 0);
+    const totalForPhase = (typeof r.fullDurationMs === 'number' && r.fullDurationMs > 0)
+      ? r.fullDurationMs
+      : (r.endTime - r.startTime);
+    const elapsed = now - r.startTime;
+    const progress = Math.max(0, Math.min(1, elapsed / totalForPhase));
+    const isFail = r.outcome === 'fail';
+    const PH_OUT = 0.25, PH_BACK = 0.75;
+    const remainingMs = Math.max(0, r.endTime - now);
+    let phase, heroLeft, heroClass = '', bossClass = '', countdownLabel, countdownClass;
+    if (progress < PH_OUT) {
+      phase = 'going';
+      heroLeft = 4 + (progress / PH_OUT) * (fightLeft - 4);
+      countdownLabel = `${formatDur(remainingMs)} (이동 중)`; countdownClass = '';
+    } else if (progress < PH_BACK) {
+      phase = 'fighting'; heroLeft = fightLeft; heroClass = 'fighting'; bossClass = 'fighting';
+      countdownLabel = `${formatDur(remainingMs)} (보스 전투 중)`; countdownClass = 'boss';
+    } else if (isFail) {
+      phase = 'died'; heroLeft = fightLeft; heroClass = 'dying';
+      countdownLabel = '미션 실패 — 검 손실'; countdownClass = 'boss';
+    } else if (progress < 1) {
+      phase = 'returning'; heroLeft = fightLeft - ((progress - PH_BACK) / (1 - PH_BACK)) * (fightLeft - 4);
+      countdownLabel = `${formatDur(remainingMs)} (귀환 중)`; countdownClass = 'return'; bossClass = 'dead';
+    } else {
+      phase = 'done'; heroLeft = 4;
+      countdownLabel = '귀환 처리 중...'; countdownClass = 'return'; bossClass = 'dead';
+    }
+    const phaseTag = ({going:'⏩ 이동', fighting:'⚔ 전투', returning:'🏃 귀환', done:'', died:'💀 사망'})[phase] || '';
+    // Per-element animation-class manager: only mutates classList when the
+    // target state actually differs, so CSS animations (boss-die, hero-die)
+    // with `animation-fill-mode: forwards` keep their final frame instead of
+    // re-firing every 500ms.
+    const applyAnimClass = (el, allClasses, want) => {
+      if (!el) return;
+      const target = want || '';
+      const cl = el.classList;
+      if (target) {
+        if (!cl.contains(target)) {
+          for (const c of allClasses) if (c !== target && cl.contains(c)) cl.remove(c);
+          cl.add(target);
+        }
+      } else {
+        for (const c of allClasses) if (cl.contains(c)) cl.remove(c);
+      }
+    };
+    const heroEl = root.querySelector('.hero');
+    if (heroEl) {
+      heroEl.style.left = heroLeft + '%';
+      applyAnimClass(heroEl, ['fighting', 'dying', 'celebrating'], heroClass);
+    }
+    const bossEl = root.querySelector('.boss');
+    applyAnimClass(bossEl, ['fighting', 'dead'], bossClass);
+    const cd = root.querySelector('.countdown');
+    if (cd) {
+      const cdTarget = 'countdown' + (countdownClass ? ' ' + countdownClass : '');
+      if (cd.className !== cdTarget) cd.className = cdTarget;
+      cd.innerHTML = `${countdownLabel} <span class="phase-tag">${phaseTag}</span>`;
+    }
+
+    // HP bars: visible during fight + briefly after (so the user sees the
+    // final state). Lerp from 100% to pre-rolled end values during fighting,
+    // freeze at end value once the fight concludes.
+    const heroHpEl = root.querySelector('.hp-bar.hero-hp');
+    const bossHpEl = root.querySelector('.hp-bar.boss-hp');
+    if (heroHpEl && bossHpEl) {
+      const showBars = phase === 'fighting' || phase === 'died' || (phase === 'returning' && progress < 0.82);
+      heroHpEl.classList.toggle('show', showBars);
+      bossHpEl.classList.toggle('show', showBars);
+      heroHpEl.style.left = `calc(${heroLeft}% - 4px)`;
+      const heroFill = heroHpEl.querySelector('.hp-fill');
+      const bossFill = bossHpEl.querySelector('.hp-fill');
+      const heroEnd = (typeof r.heroEndHp === 'number') ? r.heroEndHp : 50;
+      const bossEnd = (typeof r.bossEndHp === 'number') ? r.bossEndHp : 50;
+      let heroHp, bossHp;
+      if (phase === 'going') {
+        heroHp = 100; bossHp = 100;
+      } else if (phase === 'fighting') {
+        const fightT = (progress - PH_OUT) / (PH_BACK - PH_OUT); // 0..1
+        heroHp = Math.max(0, 100 - (100 - heroEnd) * fightT);
+        bossHp = Math.max(0, 100 - (100 - bossEnd) * fightT);
+      } else {
+        // died / returning / done — fight already concluded
+        heroHp = heroEnd; bossHp = bossEnd;
+      }
+      if (heroFill) {
+        heroFill.style.width = heroHp.toFixed(1) + '%';
+        heroFill.classList.toggle('low', heroHp < 30 && heroHp > 0);
+      }
+      if (bossFill) {
+        bossFill.style.width = bossHp.toFixed(1) + '%';
+        bossFill.classList.toggle('low', bossHp < 30 && bossHp > 0);
+      }
+      // Sync dead/dying classes the moment HP hits 0 (mid-fight knockout).
+      if (heroEl && heroHp <= 0 && !heroEl.classList.contains('dying')) {
+        heroEl.classList.remove('fighting');
+        heroEl.classList.add('dying');
+      }
+      if (bossEl && bossHp <= 0 && !bossEl.classList.contains('dead')) {
+        bossEl.classList.remove('fighting');
+        bossEl.classList.add('dead');
+      }
+    }
+  }
 }
 
 function renderRecentLog() {
@@ -678,6 +852,29 @@ function tickAndResolve() {
       try { playSound(succ > 0 ? 'cash' : 'destroy'); } catch (e) {}
     }
   }
+  return result;
+}
+
+// Detach just the resolved corridors from DOM. Other in-flight corridors stay
+// untouched so their CSS animations don't restart from a fresh innerHTML.
+function removeResolvedCorridors(resolved) {
+  const list = $('floor-list');
+  if (!list) return;
+  for (const r of resolved) {
+    const node = list.querySelector(`.hero-corridor[data-id="${CSS.escape(r.id)}"]`);
+    if (node && node.parentNode) node.parentNode.removeChild(node);
+  }
+}
+
+// Light-touch refresh of the non-corridor UI (banner stats, side bar counts,
+// recent log) after a resolution — without rebuilding the floor list.
+function refreshNonCorridorUI() {
+  $('nav-forge').textContent = forge ? forge.name : '—';
+  $('nav-gold').textContent = (state.gold || 0).toLocaleString();
+  $('nav-active').textContent = (state.rentals || []).length;
+  renderDungeonSide();
+  renderBanner();
+  renderRecentLog();
 }
 
 // ============================================================
@@ -790,11 +987,21 @@ $('forge-list').addEventListener('click', e => {
 // Resume audio context on first user interaction
 document.addEventListener('click', () => { if (state.soundOn) ensureAudio(); }, { once: true });
 
-// Live render every 500ms (smooth animation)
+// Live render every 500ms — smooth hero/boss animation. To preserve per-corridor
+// CSS animation state (boss-die / hero-die with animation-fill-mode: forwards),
+// we never rebuild the full floor list when a rental resolves: we only detach
+// the resolved corridor's DOM node and refresh the surrounding UI separately.
+// Other in-flight corridors keep their existing DOM (and thus their animations).
 setInterval(() => {
   if ($('forge-welcome-bg').classList.contains('show')) return;
-  tickAndResolve();
-  render();
+  const result = tickAndResolve();
+  if (result && result.didChange) {
+    removeResolvedCorridors(result.resolved);
+    refreshNonCorridorUI();
+  } else {
+    $('nav-gold').textContent = (state.gold || 0).toLocaleString();
+  }
+  tickUpdateCorridors(Date.now());
 }, 500);
 
 // Init

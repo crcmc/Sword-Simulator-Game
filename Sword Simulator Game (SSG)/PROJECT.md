@@ -13,11 +13,12 @@
 
 ```
 Sword Simulator Game/
-├── index.html              # 랜딩 페이지 (4게임 카드 허브)
+├── index.html              # 랜딩 페이지 (3게임 카드 허브: 강화/대여/던전)
 ├── sword-enhancement.html  # 검 강화 (대장간) — 메인 게임
 ├── sword-rental.html       # 검 대여소 (용사에게 검 빌려줌)
 ├── sword-dungeon.html      # 던전 (실시간 출정 진행)
-├── sword-gallery.html      # 갤러리 (수집한 검 모음)
+├── sword-gallery.html      # 갤러리 (생성된 정적 산출물 — 허브에서 링크 안 됨)
+├── admin.html / admin.js   # 어드민 패널 (밸런스 편집)
 ├── shared.css              # 공통 스타일 (픽셀 + 다크 + 골드 액센트)
 ├── balance-defaults.js     # 단일 진실 소스 — BALANCE_KEY/deepClone/BALANCE_DEFAULTS
 ├── shared.js               # 공통 데이터 레이어 (state/forge/tier/balance runtime)
@@ -42,11 +43,11 @@ Sword Simulator Game/
 - **던전**: 6티어 탭, 좌→우→보스→귀환 픽셀 애니메이션, 시간 카운트다운
 - **갤러리**: 컬렉션 그리드 (5칸)
 
-## 밸런스 (BALANCE_DEFAULTS, shared.js)
-- 시작 골드: 1,000,000
-- 손익분기점: +10 (= 1,000,000 G 판매가)
-- 강화석 / 보호석 / 철광석 가격 모두 balance 객체로 관리
-- `?admin=1` URL 파라미터로 관리자 4탭 패널 노출
+## 밸런스 (BALANCE_DEFAULTS, balance-defaults.js)
+- 시작 골드: 100,000
+- 판매 앵커: +10 = 1,000,000 G (sellAnchor / sellAnchorLvl), 레벨당 1.5배 (sellRatio)
+- 강화석 / 보호석 / 강화권 / 철광석 가격 모두 balance 객체로 관리
+- 어드민 게이트: `?admin=<ADMIN_HASH>` (SHA-256 해시값을 query param으로 전달). 해시는 `balance-defaults.js`의 `ADMIN_HASH` 상수와 비교
 
 ## 완료된 마일스톤 (요약)
 
@@ -69,7 +70,7 @@ Sword Simulator Game/
 ## 코딩 컨벤션 / 주의사항
 
 - **밸런스 단일 소스**: BALANCE_DEFAULTS / BALANCE_KEY / deepClone은 `balance-defaults.js`에서만 정의됨. 모든 페이지가 이 파일을 가장 먼저 로드. 밸런스 값을 바꿀 때는 이 파일만 수정.
-- **shared.js vs inline JS**: sword-enhancement.html은 forge/state/render 로직을 여전히 inline에 가지고 있고 shared.js를 로드하지 않음. sword-rental.html · sword-dungeon.html은 shared.js를 사용. 신규 공통 함수 추가 시 어디에 둘지 점검.
+- **shared.js vs inline JS**: sword-enhancement.html은 forge/state/render 로직을 여전히 inline에 가지고 있고 shared.js를 로드하지 않음 (별도 통합 작업 진행 중 — 핵심 함수가 양쪽에 중복되어 있어 수정 시 항상 두 곳을 함께 봐야 함). sword-rental.html · sword-dungeon.html은 shared.js를 사용. 신규 공통 함수 추가 시 어디에 둘지 점검.
 - **animations**: 강화 결과 애니메이션은 `clearAnims()`로 정리해야 함 (저장/판매/파괴 시).
 - **+0 검**: 보관함에서 숨기고 판매 불가 (무한 루프 방지).
 - **regex 주의**: validateForgeName은 `\0` 대신 `charCodeAt` 필터 사용.

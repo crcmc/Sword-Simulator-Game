@@ -661,8 +661,8 @@ function renderDungeonTarget(a) {
     const tier = a.desiredDungeonTier;
     const cfg = balance.dungeons && balance.dungeons[tier];
     if (!cfg) throw new Error('던전 설정 없음 (tier=' + tier + ')');
-    const dur = adjustedDuration(selectedSwordLevel, tier, a.tier);
-    const rate = adjustedSuccessRate(selectedSwordLevel, tier, a.tier);
+    const dur = adjustedDuration(selectedSwordLevel, tier, a.tier, 1, a.stats);
+    const rate = adjustedSuccessRate(selectedSwordLevel, tier, a.tier, a.stats);
     const reward = dungeonRewards(tier, 1);
     const heroCut = Math.floor(reward.gold * a.payRate / 100);
     const playerGold = reward.gold - heroCut;
@@ -736,7 +736,7 @@ function renderActiveRentals() {
     const heroTier = (typeof r.heroTier === 'number') ? r.heroTier : null;
     const tierBadge = heroTier !== null ? `<span class="tier-badge" data-tier="${heroTier}" style="margin-left:6px;">T${heroTier}</span>` : '';
     return `
-      <div class="rental-row">
+      <div class="rental-row" data-id="${escapeHtml(r.id)}">
         <div class="top">
           <span class="hero">${escapeHtml(r.heroName)}${tierBadge}</span>
           <span class="badge">+${r.swordLevel}</span>
@@ -817,8 +817,8 @@ function renderApplicantModalContent() {
   if (pendingFloor < 1) pendingFloor = 1;
   if (pendingFloor > maxAvailableFloor) pendingFloor = maxAvailableFloor;
 
-  const dur = adjustedDuration(selectedSwordLevel, tier, a.tier, pendingFloor);
-  const rate = adjustedSuccessRate(selectedSwordLevel, tier, a.tier);
+  const dur = adjustedDuration(selectedSwordLevel, tier, a.tier, pendingFloor, a.stats);
+  const rate = adjustedSuccessRate(selectedSwordLevel, tier, a.tier, a.stats);
   const reward = dungeonRewards(tier, pendingFloor);
   const heroCut = Math.floor(reward.gold * a.payRate / 100);
   const playerGold = reward.gold - heroCut;
@@ -880,8 +880,7 @@ function rejectApplicant() {
   render();
   playSound('click');
   showToast(`${a.name} 신청 반려`, 'fail');
-  state.log = state.log || [];
-  state.log.push({ text: `📛 ${a.name} (T${a.tier}) 신청 반려`, type: 'fail', t: Date.now() });
+  pushLog({ text: `📛 ${a.name} (T${a.tier}) 신청 반려`, type: 'fail', t: Date.now() });
 }
 
 function confirmRent() {
@@ -905,9 +904,17 @@ function confirmRent() {
   const prog = (state.dungeonProgress && state.dungeonProgress[tier]) || { bestFloor: 0 };
   const maxAvailableFloor = (prog.bestFloor || 0) + 1;
   const floor = Math.max(1, Math.min(maxAvailableFloor, pendingFloor || 1));
-  const adjDur = adjustedDuration(lvl, tier, a.tier, floor);
-  const adjRate = adjustedSuccessRate(lvl, tier, a.tier);
+  const adjDur = adjustedDuration(lvl, tier, a.tier, floor, a.stats);
+  const adjRate = adjustedSuccessRate(lvl, tier, a.tier, a.stats);
+  const pre = rollOutcome(adjRate, a.stats);
   const now = Date.now();
+
+  // Failed rentals end at the fight phase boundary (75% of full duration) —
+  // the hero dies, no return trip. Phase progress is still computed against
+  // fullDurationMs so the visualization (going / fighting) keeps the same
+  // timing; the corridor just resolves the moment the hero dies.
+  const fullDur = adjDur;
+  const realDur = pre.outcome === 'fail' ? Math.floor(adjDur * 0.75) : adjDur;
 
   const rental = {
     id: newRentalId(),
@@ -922,10 +929,14 @@ function confirmRent() {
     heroGreedy: a.greedy,
     heroMotivation: a.motivation,
     startTime: now,
-    endTime: now + adjDur,
+    endTime: now + realDur,
+    fullDurationMs: fullDur,
     adjustedSuccessRate: adjRate,
+    effectiveRate: pre.effectiveRate,
+    heroEndHp: pre.heroEndHp,
+    bossEndHp: pre.bossEndHp,
     resolved: false,
-    outcome: null
+    outcome: pre.outcome
   };
 
   state.collection[lvl] -= 1;
@@ -933,8 +944,7 @@ function confirmRent() {
   state.rentals.push(rental);
   state.applicants = (state.applicants || []).filter(x => x.id !== a.id);
   state.stats.rentalsStarted = (state.stats.rentalsStarted || 0) + 1;
-  state.log = state.log || [];
-  state.log.push({
+  pushLog({
     text: `⚔ ${a.name} (T${a.tier}) 이(가) +${lvl} ${SWORD_NAMES[lvl]} 들고 ${cfg.name} ${floorLabel(floor)} 출정!`,
     type: 'info',
     t: now
@@ -1141,13 +1151,35 @@ document.addEventListener('keydown', e => {
 // Resume audio context on first user interaction
 document.addEventListener('click', () => { if (state.soundOn) ensureAudio(); }, { once: true });
 
+// In-place countdown/progress refresh for the active-rentals list — avoids the
+// full DOM rebuild every second when nothing structural changed.
+function tickUpdateRentals(now) {
+  const list = $('active-rentals');
+  if (!list) return;
+  const rentals = state.rentals || [];
+  for (const r of rentals) {
+    const row = list.querySelector(`[data-id="${CSS.escape(r.id)}"]`);
+    if (!row) continue;
+    const total = r.endTime - r.startTime;
+    const elapsed = now - r.startTime;
+    const progress = Math.max(0, Math.min(1, elapsed / total));
+    const remainingMs = Math.max(0, r.endTime - now);
+    const remainingTxt = remainingMs === 0 ? '귀환 임박' : formatDuration(remainingMs);
+    const fill = row.querySelector('.progress-fill');
+    if (fill) fill.style.width = (progress * 100).toFixed(1) + '%';
+    const cd = row.querySelector('.countdown');
+    if (cd) cd.textContent = '⏳ ' + remainingTxt;
+  }
+}
+
 // Live tick: refresh, generate applicants, resolve rentals
 setInterval(() => {
   if ($('forge-welcome-bg').classList.contains('show')) return;
   const now = Date.now();
   const result = resolveRentals();
   const newApps = maybeGenerateApplicants(now);
-  if (result.didChange || newApps > 0) saveState();
+  const structural = result.didChange || newApps > 0;
+  if (structural) saveState();
   if (result.didChange) {
     const succ = result.resolved.filter(r => r.outcome === 'success').length;
     const fail = result.resolved.filter(r => r.outcome === 'fail').length;
@@ -1162,7 +1194,8 @@ setInterval(() => {
   if (newApps > 0) {
     try { playSound('click'); } catch (e) {}
   }
-  render();
+  if (structural) render();
+  else tickUpdateRentals(now);
 }, 1000);
 
 // Init

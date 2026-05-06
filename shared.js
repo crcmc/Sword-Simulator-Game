@@ -1,6 +1,8 @@
 /* ============================================================
    shared.js — Sword Enhancement common module
-   Used by: sword-enhancement.html, sword-rental.html, sword-dungeon.html
+   Used by: sword-rental.html, sword-dungeon.html
+   (sword-enhancement.html still carries its own inline copy of this
+   runtime — pending unification refactor.)
    Requires balance-defaults.js to be loaded first (provides
    BALANCE_KEY, deepClone, BALANCE_DEFAULTS).
    ============================================================ */
@@ -15,6 +17,17 @@ if (typeof BALANCE_DEFAULTS === 'undefined' || typeof BALANCE_KEY === 'undefined
       '</div>';
   }
   throw new Error('balance-defaults.js failed to load (shared.js)');
+}
+
+// Append a log entry, trimming oldest to keep the array bounded.
+// Without a cap, long-running saves grow state.log unboundedly (logs only get
+// trimmed to 50 in the enhancement-page render — but the underlying array
+// kept growing across sessions until QuotaExceededError).
+const LOG_CAP = 200;
+function pushLog(entry) {
+  state.log = state.log || [];
+  state.log.push(entry);
+  if (state.log.length > LOG_CAP) state.log.splice(0, state.log.length - LOG_CAP);
 }
 
 // Minimal HTML escape for any user/import-controlled string that flows into innerHTML.
@@ -708,6 +721,10 @@ function generateApplicant(swordLevel) {
 function maybeGenerateApplicants(now) {
   state.applicants = state.applicants || [];
   state.lastApplicantGen = state.lastApplicantGen || {};
+  // Drop applicants for sword levels that no longer have any inventory — the
+  // player cannot reach them (rental UI filters by forSwordLevel + selectable
+  // collection), so they would just bloat state.applicants forever.
+  state.applicants = state.applicants.filter(a => (state.collection[a.forSwordLevel] || 0) > 0);
   const baseInterval = balance.applicantBaseIntervalMs || 30000;
   const maxPerSword = balance.applicantMaxPerSword || 10;
   const maxTotal = balance.applicantMaxTotal || 100;
@@ -770,19 +787,35 @@ function _applyDurGap(mult, gap) {
   const ext = Math.min(100, Math.abs(gap) * (balance.tierMismatchTimePenalty || 0));
   return mult * (1 + ext / 100);
 }
-function adjustedSuccessRate(swordLevel, dungeonTier, heroTier) {
+// Hero stats now actually affect outcome:
+//  - strength + agility together give a small additive bonus to success rate
+//    (centered on stat=50 ≈ 0 bonus; high-stat heroes get up to ~+12%)
+//  - agility additionally trims duration (faster heroes finish quicker)
+//  - luck contributes jitter applied at rental creation (see rollOutcome)
+function _statBonus(stats) {
+  if (!stats) return 0;
+  const str = Math.max(0, stats.strength || 0);
+  const agi = Math.max(0, stats.agility || 0);
+  return (str + agi) / 8 - 12; // 50,50 → +0.5, 80,80 → +8, 30,30 → -4.5
+}
+function adjustedSuccessRate(swordLevel, dungeonTier, heroTier, heroStats) {
   let rate = balance.dungeons[dungeonTier].successRate;
   rate = _applyRateGap(rate, getTier(swordLevel) - dungeonTier);
   if (typeof heroTier === 'number') {
     rate = _applyRateGap(rate, heroTier - dungeonTier);
   }
-  return Math.max(1, Math.min(100, rate));
+  rate += _statBonus(heroStats);
+  return Math.max(1, Math.min(100, Math.round(rate)));
 }
-function adjustedDuration(swordLevel, dungeonTier, heroTier, floor) {
+function adjustedDuration(swordLevel, dungeonTier, heroTier, floor, heroStats) {
   let mult = 1;
   mult = _applyDurGap(mult, getTier(swordLevel) - dungeonTier);
   if (typeof heroTier === 'number') {
     mult = _applyDurGap(mult, heroTier - dungeonTier);
+  }
+  if (heroStats && typeof heroStats.agility === 'number') {
+    // Up to -39% at agility 99, down to ~-12% at agility 30. Floored at 0.7×.
+    mult *= Math.max(0.7, 1 - heroStats.agility / 250);
   }
   // Cap multiplier between 0.25 (max combined reduction) and 4 (max combined extension)
   mult = Math.max(0.25, Math.min(4, mult));
@@ -792,6 +825,36 @@ function adjustedDuration(swordLevel, dungeonTier, heroTier, floor) {
   const floorRate = (typeof balance.floorTimeMultiplier === 'number') ? balance.floorTimeMultiplier : 0.1;
   const floorMult = Math.pow(1 + floorRate, floorN - 1);
   return Math.floor(balance.dungeons[dungeonTier].durationMs * mult * floorMult);
+}
+
+// Roll the rental outcome eagerly at rental creation. Luck applies jitter
+// (±luck/10 percent) on top of the deterministic adjusted rate, then a single
+// random roll decides success/fail. The HP-bar visualization later reads
+// r.outcome / r.heroEndHp / r.bossEndHp so the fight resolves visibly.
+function rollOutcome(adjRate, heroStats) {
+  const luck = Math.max(0, (heroStats && heroStats.luck) || 0);
+  const jitter = (Math.random() * 2 - 1) * (luck / 10);
+  const effective = Math.max(1, Math.min(100, adjRate + jitter));
+  const isSuccess = (Math.random() * 100) < effective;
+  // Margin: how decisive the outcome looks. Higher luck → wider variance.
+  const luckSpread = 10 + luck * 0.4; // [10, 50)
+  const jitter2 = (Math.random() * 2 - 1) * luckSpread;
+  let heroEndHp, bossEndHp;
+  if (isSuccess) {
+    bossEndHp = 0;
+    // Hero finishes with 30~80% baseline ± luck spread, clamped 5..95
+    heroEndHp = Math.max(5, Math.min(95, 55 + jitter2));
+  } else {
+    heroEndHp = 0;
+    // Boss left with 20~60% baseline
+    bossEndHp = Math.max(5, Math.min(95, 40 + jitter2));
+  }
+  return {
+    outcome: isSuccess ? 'success' : 'fail',
+    effectiveRate: Math.round(effective),
+    heroEndHp: Math.round(heroEndHp),
+    bossEndHp: Math.round(bossEndHp)
+  };
 }
 
 // Resolve all rentals whose endTime ≤ now. Returns { resolved: [...], didChange }
@@ -806,12 +869,16 @@ function resolveRentals() {
 
   state.rentals.forEach(r => {
     if (now < r.endTime) { remaining.push(r); return; }
-    // Use rate frozen at rental creation if available; fall back to dungeon base rate
-    const rate = (typeof r.adjustedSuccessRate === 'number')
-      ? r.adjustedSuccessRate
-      : balance.dungeons[r.dungeonTier].successRate;
-    const isSuccess = (Math.random() * 100) < rate;
-    r.outcome = isSuccess ? 'success' : 'fail';
+    // Outcome is normally pre-rolled at rental creation (so the HP-bar fight
+    // visualization can converge to it). Older saves may not have it — fall
+    // back to a fresh roll.
+    if (r.outcome !== 'success' && r.outcome !== 'fail') {
+      const rate = (typeof r.adjustedSuccessRate === 'number')
+        ? r.adjustedSuccessRate
+        : balance.dungeons[r.dungeonTier].successRate;
+      const isSuccess = (Math.random() * 100) < rate;
+      r.outcome = isSuccess ? 'success' : 'fail';
+    }
     r.resolvedAt = now;
     r.resolved = true;
     resolved.push(r);
@@ -859,8 +926,7 @@ function resolveRentals() {
           r.unlockedNextTier = r.dungeonTier + 1;
         }
       }
-      state.log = state.log || [];
-      state.log.push({
+      pushLog({
         text: `🎉 ${r.heroName} 귀환! +${r.swordLevel} 회수 + ${playerGold.toLocaleString()} G` +
               (heroCut > 0 ? ` (용사 보수 ${heroCut.toLocaleString()})` : '') +
               ` + ${reward.resource} ${balance.resourceNames[r.dungeonTier]}` +
@@ -878,8 +944,7 @@ function resolveRentals() {
       });
       state.stats = state.stats || {};
       state.stats.rentalsFailed = (state.stats.rentalsFailed || 0) + 1;
-      state.log = state.log || [];
-      state.log.push({
+      pushLog({
         text: `💀 ${r.heroName} 사망. +${r.swordLevel} 검이 ${cfg.name} ${r.floor}F 에 갇힘.`,
         type: 'destroy', t: now
       });
