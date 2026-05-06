@@ -462,7 +462,7 @@ function renderDungeonSide() {
       : `T${t} · 잠김`;
     html += `
       <button class="dungeon-card ${cls}" data-tier="${t}" type="button">
-        <span class="dname" style="color:${tcolor}">${lock}${cfg.name}</span>
+        <span class="dname" style="color:${tcolor}">${lock}${escapeHtml(cfg.name)}</span>
         <span class="dmeta">${meta}</span>
       </button>
     `;
@@ -477,13 +477,15 @@ function renderBanner() {
   const tcolor = TIER_COLORS[activeTier];
   const banner = $('dungeon-banner');
   banner.style.borderTopColor = tcolor;
+  const cfgNameSafe = escapeHtml(cfg.name);
+  const resNameSafe = escapeHtml(balance.resourceNames[activeTier]);
   banner.innerHTML = `
-    <h2 style="color:${tcolor}">${prog.unlocked ? '' : '🔒 '}${cfg.name}</h2>
-    <div class="dsub">티어 ${activeTier} · 자원: ${balance.resourceNames[activeTier]}</div>
+    <h2 style="color:${tcolor}">${prog.unlocked ? '' : '🔒 '}${cfgNameSafe}</h2>
+    <div class="dsub">티어 ${activeTier} · 자원: ${resNameSafe}</div>
     <div class="dstats">
       <span><span class="label">기본 소요</span><span class="v">${formatDur(cfg.durationMs)}</span></span>
       <span><span class="label">기본 성공률</span><span class="v" style="color:var(--success)">${cfg.successRate}%</span></span>
-      <span><span class="label">1층 보상</span><span class="v">${reward.gold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[activeTier]}</span></span>
+      <span><span class="label">1층 보상</span><span class="v">${reward.gold.toLocaleString()} G + ${reward.resource} ${resNameSafe}</span></span>
       <span><span class="label">최고 클리어</span><span class="v">${(prog.bestFloor || 0)}층</span></span>
       <span><span class="label">층당 시간 가산</span><span class="v">+${Math.round(((typeof balance.floorTimeMultiplier === 'number' ? balance.floorTimeMultiplier : 0.1) * 100))}%</span></span>
     </div>
@@ -495,7 +497,7 @@ function renderFloors() {
   const cfg = balance.dungeons[activeTier];
   const prog = state.dungeonProgress?.[activeTier] || { unlocked: activeTier === 0, bestFloor: 0 };
   if (!prog.unlocked) {
-    list.innerHTML = `<div class="floor-section locked"><div class="floor-header">🔒 ${cfg.name}</div><div class="lock-msg">이전 티어 던전을 1회 이상 클리어하세요.</div></div>`;
+    list.innerHTML = `<div class="floor-section locked"><div class="floor-header">🔒 ${escapeHtml(cfg.name)}</div><div class="lock-msg">이전 티어 던전을 1회 이상 클리어하세요.</div></div>`;
     return;
   }
   const bestFloor = prog.bestFloor || 0;
@@ -615,7 +617,7 @@ function renderCorridor(r) {
 
   return `
     <div class="hero-info">
-      <span><span class="name">${r.heroName}</span> <span class="badge">+${r.swordLevel}</span> <span style="color:var(--text-dim);">${swordName}</span>${gapBadge}</span>
+      <span><span class="name">${escapeHtml(r.heroName)}</span> <span class="badge">+${r.swordLevel}</span> <span style="color:var(--text-dim);">${escapeHtml(swordName)}</span>${gapBadge}</span>
       <span class="countdown ${countdownClass}">${countdownLabel} <span class="phase-tag">${phaseTag}</span></span>
     </div>
     <div class="corridor t${r.dungeonTier}">
@@ -634,7 +636,7 @@ function renderRecentLog() {
     list.innerHTML = '<div style="color:var(--text-dim); font-style:italic;">아직 기록이 없어요</div>';
     return;
   }
-  list.innerHTML = entries.map(e => `<div class="entry ${e.type || ''}">${e.text}</div>`).join('');
+  list.innerHTML = entries.map(e => `<div class="entry ${e.type || ''}">${escapeHtml(e.text)}</div>`).join('');
 }
 
 // ============================================================

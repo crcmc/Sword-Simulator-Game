@@ -374,7 +374,13 @@ function handleImport(file) {
     try {
       const parsed = JSON.parse(e.target.result);
       if (typeof parsed !== 'object' || parsed === null) throw new Error('Invalid JSON');
-      balance = Object.assign(deepClone(BALANCE_DEFAULTS), parsed);
+      // Whitelist to BALANCE_DEFAULTS keys so unknown fields cannot leak in.
+      const allowedKeys = Object.keys(BALANCE_DEFAULTS);
+      const filtered = {};
+      for (const k of allowedKeys) {
+        if (Object.prototype.hasOwnProperty.call(parsed, k)) filtered[k] = parsed[k];
+      }
+      balance = Object.assign(deepClone(BALANCE_DEFAULTS), filtered);
       saveBalance(balance);
       populateForm();
       showToast('Import 완료 (로컬에 저장됨)', 'success');

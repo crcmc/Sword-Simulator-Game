@@ -617,7 +617,7 @@ function renderPreviewSword() {
   const count = state.collection[selectedSwordLevel] || 0;
   box.innerHTML = `
     <div>${buildSwordSVG(selectedSwordLevel, { width: 56 })}</div>
-    <div class="preview-name" style="color:${tierColor}">+${selectedSwordLevel} ${name}</div>
+    <div class="preview-name" style="color:${tierColor}">+${selectedSwordLevel} ${escapeHtml(name)}</div>
     <div class="preview-meta">티어 ${tier} · 보관 ${count}개</div>
   `;
 }
@@ -635,7 +635,7 @@ function renderPreviewHero(a) {
   const tierColor = TIER_COLORS[a.tier];
   box.innerHTML = `
     <div>${buildHeroSVG(-1, { size: 80, heroTier: a.tier })}</div>
-    <div class="preview-name" style="color:${tierColor}">${a.name}</div>
+    <div class="preview-name" style="color:${tierColor}">${escapeHtml(a.name)}</div>
     <div class="preview-meta">티어 ${a.tier} · 보수 ${a.payRate}%</div>
   `;
 }
@@ -674,16 +674,16 @@ function renderDungeonTarget(a) {
     const gapTxt = gapNotes.length ? `(${gapNotes.join(', ')})` : '';
     const rateColor = rate >= 70 ? 'success' : rate >= 30 ? 'warn' : 'fail';
     box.innerHTML = `
-      <div class="dt-row"><span class="label">희망 던전</span><span class="v" style="color:${TIER_COLORS[tier]}">${cfg.name} (티어 ${tier}) ${a.greedy ? '🎯' : ''}</span></div>
+      <div class="dt-row"><span class="label">희망 던전</span><span class="v" style="color:${TIER_COLORS[tier]}">${escapeHtml(cfg.name)} (티어 ${tier}) ${a.greedy ? '🎯' : ''}</span></div>
       <div class="dt-row"><span class="label">던전 성공률 ${gapTxt}</span><span class="v ${rateColor}">${rate}%</span></div>
       <div class="dt-row"><span class="label">공략 소요 시간</span><span class="v">${formatDuration(dur)}</span></div>
-      <div class="dt-row"><span class="label">예상 보수 (성공 시)</span><span class="v">+${playerGold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[tier]}</span></div>
+      <div class="dt-row"><span class="label">예상 보수 (성공 시)</span><span class="v">+${playerGold.toLocaleString()} G + ${reward.resource} ${escapeHtml(balance.resourceNames[tier])}</span></div>
       <div class="dt-row"><span class="label">용사 보수 (${a.payRate}%)</span><span class="v warn">−${heroCut.toLocaleString()} G</span></div>
     `;
   } catch (e) {
     console.warn('renderDungeonTarget failed:', e, 'applicant:', a);
     box.classList.add('empty');
-    box.innerHTML = '⚠️ 출정 정보 표시 실패: ' + (e.message || e);
+    box.textContent = '⚠️ 출정 정보 표시 실패: ' + (e.message || e);
   }
 }
 
@@ -706,11 +706,11 @@ function renderApplicants() {
     const sel = (a.id === selectedApplicantId) ? ' selected' : '';
     const greedyIcon = a.greedy ? '<span class="greedy" title="능력 이상의 던전을 노립니다">🎯</span>' : '';
     return `
-      <div class="applicant-card${sel}" data-id="${a.id}">
-        <span class="name">${a.name}${greedyIcon}</span>
+      <div class="applicant-card${sel}" data-id="${escapeHtml(a.id)}">
+        <span class="name">${escapeHtml(a.name)}${greedyIcon}</span>
         <span class="tier-badge" data-tier="${a.tier}">T${a.tier}</span>
         <span class="pay">${a.payRate}%</span>
-        <button class="view-btn" data-action="view" data-id="${a.id}">신청서 확인</button>
+        <button class="view-btn" data-action="view" data-id="${escapeHtml(a.id)}">신청서 확인</button>
       </div>
     `;
   }).join('');
@@ -738,11 +738,11 @@ function renderActiveRentals() {
     return `
       <div class="rental-row">
         <div class="top">
-          <span class="hero">${r.heroName}${tierBadge}</span>
+          <span class="hero">${escapeHtml(r.heroName)}${tierBadge}</span>
           <span class="badge">+${r.swordLevel}</span>
         </div>
         <div class="info">
-          ${swordName} · ${dungeon.name} ${r.floor}F
+          ${escapeHtml(swordName)} · ${escapeHtml(dungeon.name)} ${r.floor}F
         </div>
         <div class="progress-bar">
           <div class="progress-fill" style="width:${(progress*100).toFixed(1)}%"></div>
@@ -767,11 +767,11 @@ function renderDeadSwords() {
     return `
       <div class="rental-row dead">
         <div class="top">
-          <span class="hero">${s.heroName || '???'}</span>
+          <span class="hero">${escapeHtml(s.heroName || '???')}</span>
           <span class="badge">+${s.swordLevel}</span>
         </div>
         <div class="info">
-          ${swordName} · ${dungeon.name} ${s.floor}F<br>
+          ${escapeHtml(swordName)} · ${escapeHtml(dungeon.name)} ${s.floor}F<br>
           <span style="color:var(--fail);">다음 성공 시 회수</span>
         </div>
       </div>
@@ -831,18 +831,24 @@ function renderApplicantModalContent() {
     floorButtons += `<button class="floor-btn ${cls}" data-floor="${f}" type="button">${tag} ${floorLabel(f)}</button>`;
   }
 
-  let summary = `<div class="key">선택 검:</div> <strong>+${selectedSwordLevel} ${SWORD_NAMES[selectedSwordLevel]}</strong> (티어 ${getTier(selectedSwordLevel)})<br>`;
-  summary += `<div class="key">희망 던전:</div> <strong>${dungeon.name}</strong> (티어 ${tier})${a.greedy ? ' <span class="warn">🎯 능력 이상 도전</span>' : ''}<br>`;
+  const swordNameSafe = escapeHtml(SWORD_NAMES[selectedSwordLevel]);
+  const dungeonNameSafe = escapeHtml(dungeon.name);
+  const resourceNameSafe = escapeHtml(balance.resourceNames[tier]);
+  const aNameSafe = escapeHtml(a.name);
+  const aMotivationSafe = escapeHtml(a.motivation);
+
+  let summary = `<div class="key">선택 검:</div> <strong>+${selectedSwordLevel} ${swordNameSafe}</strong> (티어 ${getTier(selectedSwordLevel)})<br>`;
+  summary += `<div class="key">희망 던전:</div> <strong>${dungeonNameSafe}</strong> (티어 ${tier})${a.greedy ? ' <span class="warn">🎯 능력 이상 도전</span>' : ''}<br>`;
   summary += `<div class="key">출정 층:</div> <strong>${floorLabel(pendingFloor)}</strong><br>`;
   summary += `<div class="key">던전 성공률:</div> <span class="${rate >= 70 ? 'pos' : rate >= 30 ? 'warn' : 'neg'}">${rate}%</span><br>`;
   summary += `<div class="key">공략 소요 시간:</div> ${formatDuration(dur)}<br>`;
-  summary += `<div class="key">성공 시 보수:</div> +${playerGold.toLocaleString()} G + ${reward.resource} ${balance.resourceNames[tier]} (용사 ${heroCut.toLocaleString()} G 차감)`;
+  summary += `<div class="key">성공 시 보수:</div> +${playerGold.toLocaleString()} G + ${reward.resource} ${resourceNameSafe} (용사 ${heroCut.toLocaleString()} G 차감)`;
 
   $('applicant-modal-title').textContent = `${a.name} 신청서`;
   $('applicant-modal-body').innerHTML = `
     <div class="hero-portrait">
       <div>${buildHeroSVG(-1, { size: 80, heroTier: a.tier })}</div>
-      <div class="hp-name" style="color:${tierColor}">${a.name}</div>
+      <div class="hp-name" style="color:${tierColor}">${aNameSafe}</div>
       <div class="hp-tier"><span class="tier-badge" data-tier="${a.tier}">티어 ${a.tier}</span></div>
     </div>
     <div class="stats-grid">
@@ -850,9 +856,9 @@ function renderApplicantModalContent() {
       <div class="stat-cell"><div class="label">민첩</div><div class="v">${a.stats.agility}</div></div>
       <div class="stat-cell"><div class="label">행운</div><div class="v">${a.stats.luck}</div></div>
     </div>
-    <div class="info-row"><span class="k">희망 던전</span><span class="v">${dungeon.name} (티어 ${tier})${a.greedy ? ' 🎯' : ''}</span></div>
+    <div class="info-row"><span class="k">희망 던전</span><span class="v">${dungeonNameSafe} (티어 ${tier})${a.greedy ? ' 🎯' : ''}</span></div>
     <div class="info-row"><span class="k">희망 보수율</span><span class="v" style="color:var(--success);">${a.payRate}%</span></div>
-    <div class="motivation">"${a.motivation}"</div>
+    <div class="motivation">"${aMotivationSafe}"</div>
     <div class="floor-selector"><div class="key" style="margin-bottom:6px;">출정 층 선택 (최고 ${prog.bestFloor || 0}층 클리어)</div><div class="floor-buttons">${floorButtons}</div></div>
     <div class="summary">${summary}</div>
   `;

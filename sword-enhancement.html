@@ -1996,6 +1996,18 @@ const LEGACY_SAVE_KEY = 'sword_enhancement_save_v4'; // pre-forge data
 const FORGE_KEY = 'sword_enhancement_forge_v1';
 let SAVE_KEY = ''; // set per-forge after setupForge()
 
+// Minimal HTML escape for any user/import-controlled string that flows into innerHTML.
+// Sword/tier/dungeon names and log text can all be set via JSON import — never inject raw.
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ============================================================
 //  BALANCE — defaults live in balance-defaults.js (loaded above);
 //  this file owns the runtime balance state + admin-edit handlers.
@@ -2141,10 +2153,12 @@ function setupForge(rawName) {
       }
     }
   } else if (oldForge.name !== name) {
-    // Rename: move data from old key to new key
+    // Rename: move data from old key to new key.
+    // Refuse to overwrite an existing forge save with the same name.
     const oldKey = SAVE_KEY_PREFIX + oldForge.name;
     const oldData = localStorage.getItem(oldKey);
     if (oldData) {
+      if (localStorage.getItem(newKey)) return false;
       localStorage.setItem(newKey, oldData);
       localStorage.removeItem(oldKey);
     }
@@ -2205,10 +2219,17 @@ function getMaterialReq(currentLevel) {
 function rollFailure(level) {
   for (const rule of balance.failureRules) {
     if (level <= rule.maxLevel) {
-      const r = Math.random();
-      if (r < rule.maintain) return 'maintain';
-      if (r < rule.maintain + rule.downgrade) return 'downgrade';
-      return 'destroy';
+      const maintain = Math.max(0, rule.maintain || 0);
+      const downgrade = Math.max(0, rule.downgrade || 0);
+      const destroy = Math.max(0, rule.destroy || 0);
+      const total = maintain + downgrade + destroy;
+      // Roll across max(total, 1). If total < 1, the leftover falls through to
+      // 'maintain' (admin copy: "부족분은 자동 유지로 처리").
+      const r = Math.random() * Math.max(total, 1);
+      if (r < maintain) return 'maintain';
+      if (r < maintain + downgrade) return 'downgrade';
+      if (r < total) return 'destroy';
+      return 'maintain';
     }
   }
   return 'maintain';
@@ -2989,12 +3010,15 @@ function render() {
   // Resources bar (6 tier resources)
   const resKeys = ['iron','steel','mystic','crystal','inferno','legendary'];
   const resBar = $('resources-bar');
-  resBar.innerHTML = resKeys.map((key, t) => `
-    <div class="resource-stat" data-tier="${t}" title="${balance.resourceNames[t]}">
-      <div class="l">${balance.resourceNames[t]}</div>
+  resBar.innerHTML = resKeys.map((key, t) => {
+    const rn = escapeHtml(balance.resourceNames[t]);
+    return `
+    <div class="resource-stat" data-tier="${t}" title="${rn}">
+      <div class="l">${rn}</div>
       <div class="v" id="top-res-${key}">${(state.resources[key]||0).toLocaleString()}</div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   $('stat-attempts').textContent = state.stats.attempts;
   $('stat-success').textContent = state.stats.success;
@@ -3090,7 +3114,7 @@ function render() {
   renderCollection(matReq);
 
   logEl.innerHTML = state.log.slice(-50).reverse().map(e =>
-    `<div class="log-entry ${e.type}">${e.text}</div>`
+    `<div class="log-entry ${e.type}">${escapeHtml(e.text)}</div>`
   ).join('');
 
   // Sound toggle button text
@@ -3209,14 +3233,16 @@ function renderSummonPanel() {
     const tierColor = TIER_COLORS[t];
     const enough = cheats.infiniteMaterials || have >= minCost;
     const disabled = enough && !busy ? '' : 'disabled';
+    const rn = escapeHtml(balance.resourceNames[t]);
+    const tierLabel = escapeHtml(TIER_TIER_NAMES[t]);
     html += `
-      <div class="summon-row ${disabled}" data-tier="${t}" title="${balance.resourceNames[t]} 소환">
+      <div class="summon-row ${disabled}" data-tier="${t}" title="${rn} 소환">
         <div class="header">
-          <span class="tier-label" style="color:${tierColor}">티어 ${t} · ${TIER_TIER_NAMES[t]}</span>
-          <span class="res-count">${balance.resourceNames[t]}: ${have.toLocaleString()}</span>
+          <span class="tier-label" style="color:${tierColor}">티어 ${t} · ${tierLabel}</span>
+          <span class="res-count">${rn}: ${have.toLocaleString()}</span>
         </div>
         <div class="info">
-          <span class="cost">${minCost}~${maxCost} ${balance.resourceNames[t]}</span>
+          <span class="cost">${minCost}~${maxCost} ${rn}</span>
           <span class="out">+${range.min}~+${range.max} 가중치</span>
         </div>
       </div>
@@ -3279,9 +3305,11 @@ function buildTooltipHTML(lvl) {
   const isCurrentMaterial = curMatReq && curMatReq.level === lvl;
   const lore = isUnlocked ? TIER_LORE[tier] : '강화 성공으로 정체를 밝혀라.';
 
+  const nameSafe = escapeHtml(name);
+  const tierTitleSafe = escapeHtml(TIER_TIER_NAMES[tier]);
   let html = `
-    <div class="dt-name" style="color:${isUnlocked ? tierColor : '#666'}">+${lvl}  ${name}</div>
-    <div class="dt-tier" style="color:${tierColor}">${TIER_TIER_NAMES[tier]} 티어</div>
+    <div class="dt-name" style="color:${isUnlocked ? tierColor : '#666'}">+${lvl}  ${nameSafe}</div>
+    <div class="dt-tier" style="color:${tierColor}">${tierTitleSafe} 티어</div>
     <div class="dt-divider"></div>
     <div class="dt-row"><span class="dt-label">보관 수량</span><span class="dt-val gold">${count} 개</span></div>
   `;
@@ -3304,7 +3332,7 @@ function buildTooltipHTML(lvl) {
   if (isCurrentMaterial) {
     html += `<div class="dt-divider"></div><div class="dt-row"><span class="dt-label">현재 재료 필요</span><span class="dt-val pink">${curMatReq.count}개</span></div>`;
   }
-  html += `<div class="dt-lore">"${lore}"</div>`;
+  html += `<div class="dt-lore">"${escapeHtml(lore)}"</div>`;
   if (count > 0) {
     html += `<div class="dt-hint">▶ 클릭: 꺼내기 / 판매</div>`;
   }
@@ -3362,9 +3390,11 @@ function showCollectionActionModal(lvl) {
   const sellable = sellPrice > 0;
 
   const body = $('action-modal-body');
+  const tierTitleSafe = escapeHtml(TIER_TIER_NAMES[tier]);
+  const currentNameSafe = escapeHtml(state.unlocked[state.level] ? SWORD_NAMES[state.level] : '???');
   body.innerHTML = `
     <div class="action-modal-info">
-      <div class="ami-row"><span>티어</span><span class="val" style="color:${tierColor}">${TIER_TIER_NAMES[tier]}</span></div>
+      <div class="ami-row"><span>티어</span><span class="val" style="color:${tierColor}">${tierTitleSafe}</span></div>
       <div class="ami-row"><span>보관 수량</span><span class="val gold">${count} 개</span></div>
       <div class="ami-row"><span>개당 판매가</span><span class="val teal">${sellable ? sellPrice.toLocaleString() + ' G' : '판매 불가'}</span></div>
     </div>
@@ -3374,7 +3404,7 @@ function showCollectionActionModal(lvl) {
       <button class="btn store" id="ac-take" style="width:100%; margin-top:4px;">+${lvl} 꺼내기</button>
       <div class="action-help">
         ${state.level > 0
-          ? `현재 +${state.level} ${state.unlocked[state.level] ? SWORD_NAMES[state.level] : '???'} 검은 보관함에 자동 보관됩니다`
+          ? `현재 +${state.level} ${currentNameSafe} 검은 보관함에 자동 보관됩니다`
           : `현재 +0 검은 폐기됩니다`}
       </div>
     </div>
@@ -4141,7 +4171,7 @@ function populateDebugForm() {
     const isUnlocked = !!state.unlocked[i];
     row.innerHTML = `
       <span class="lvl">+${i}</span>
-      <span class="name">${isUnlocked ? SWORD_NAMES[i] : '???'}</span>
+      <span class="name">${escapeHtml(isUnlocked ? SWORD_NAMES[i] : '???')}</span>
       <label style="font-size:9px; color:#9b8fbf;">해금</label>
       <input type="checkbox" id="dbg-unlock-${i}" ${isUnlocked ? 'checked' : ''} ${i === 0 ? 'disabled' : ''}>
       <label style="font-size:9px; color:#9b8fbf;">수량</label>
@@ -4363,12 +4393,24 @@ function debugImportSaveFile(file) {
   reader.onload = e => {
     try {
       const parsed = JSON.parse(e.target.result);
-      if (parsed.state) {
-        state = Object.assign(defaultState(), parsed.state);
+      if (parsed.state && typeof parsed.state === 'object') {
+        // Whitelist to defaultState() keys so unknown fields cannot leak in.
+        const def = defaultState();
+        const allowedStateKeys = Object.keys(def);
+        const filteredState = {};
+        for (const k of allowedStateKeys) {
+          if (Object.prototype.hasOwnProperty.call(parsed.state, k)) filteredState[k] = parsed.state[k];
+        }
+        state = Object.assign(def, filteredState);
         saveState();
       }
-      if (parsed.balance) {
-        balance = Object.assign(deepClone(BALANCE_DEFAULTS), parsed.balance);
+      if (parsed.balance && typeof parsed.balance === 'object') {
+        const allowedBalanceKeys = Object.keys(BALANCE_DEFAULTS);
+        const filteredBalance = {};
+        for (const k of allowedBalanceKeys) {
+          if (Object.prototype.hasOwnProperty.call(parsed.balance, k)) filteredBalance[k] = parsed.balance[k];
+        }
+        balance = Object.assign(deepClone(BALANCE_DEFAULTS), filteredBalance);
         applyBalance();
       }
       render();
@@ -4645,7 +4687,15 @@ function handleForgeRenameConfirm() {
     hideForgeRename();
     return;
   }
-  setupForge(valid);
+  // Block rename if another forge already exists with that name (would overwrite).
+  if (localStorage.getItem(SAVE_KEY_PREFIX + valid)) {
+    $('forge-rename-err').textContent = '같은 이름의 대장간이 이미 존재합니다.';
+    return;
+  }
+  if (!setupForge(valid)) {
+    $('forge-rename-err').textContent = '이름 변경에 실패했습니다.';
+    return;
+  }
   hideForgeRename();
   render();
   populateDebugForm && populateDebugForm();

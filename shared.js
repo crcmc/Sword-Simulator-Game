@@ -17,6 +17,19 @@ if (typeof BALANCE_DEFAULTS === 'undefined' || typeof BALANCE_KEY === 'undefined
   throw new Error('balance-defaults.js failed to load (shared.js)');
 }
 
+// Minimal HTML escape for any user/import-controlled string that flows into innerHTML.
+// Sword/tier/dungeon names, applicant names/motivations, hero names, and log text
+// can all be set via JSON import — never inject them raw.
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // =============== CONSTANTS ===============
 const MAX_LEVEL = 30;
 const SAVE_KEY_PREFIX = 'sword_enhancement_save_v4__';
@@ -106,10 +119,17 @@ function getMaterialReq(currentLevel) {
 function rollFailure(level) {
   for (const rule of balance.failureRules) {
     if (level <= rule.maxLevel) {
-      const r = Math.random();
-      if (r < rule.maintain) return 'maintain';
-      if (r < rule.maintain + rule.downgrade) return 'downgrade';
-      return 'destroy';
+      const maintain = Math.max(0, rule.maintain || 0);
+      const downgrade = Math.max(0, rule.downgrade || 0);
+      const destroy = Math.max(0, rule.destroy || 0);
+      const total = maintain + downgrade + destroy;
+      // Roll across max(total, 1). If total < 1, the leftover falls through to
+      // 'maintain' (admin copy: "부족분은 자동 유지로 처리").
+      const r = Math.random() * Math.max(total, 1);
+      if (r < maintain) return 'maintain';
+      if (r < maintain + downgrade) return 'downgrade';
+      if (r < total) return 'destroy';
+      return 'maintain';
     }
   }
   return 'maintain';
@@ -321,7 +341,12 @@ function setupForge(rawName) {
   } else if (oldForge.name !== name) {
     const oldKey = SAVE_KEY_PREFIX + oldForge.name;
     const oldData = localStorage.getItem(oldKey);
-    if (oldData) { localStorage.setItem(newKey, oldData); localStorage.removeItem(oldKey); }
+    if (oldData) {
+      // Refuse to overwrite an existing forge save with the same name.
+      if (localStorage.getItem(newKey)) return false;
+      localStorage.setItem(newKey, oldData);
+      localStorage.removeItem(oldKey);
+    }
   }
   forge = { name: name, createdAt: oldForge?.createdAt || Date.now(), renamedAt: Date.now() };
   saveForge();
