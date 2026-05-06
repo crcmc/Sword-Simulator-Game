@@ -3168,16 +3168,13 @@ function renderItems() {
     {
       key: 'ticket',
       name: '+15강 강화권',
-      desc: state.level >= 15
-        ? '이미 +15 이상 — 사용 불가'
-        : `현재 +${state.level} 검을 즉시 +15로 (1장 소모)`,
+      desc: '현재 검은 보관함으로, +15강 새 검을 강화 슬롯에 장착 (1장 소모)',
       icon: buildTicketSVG(),
       count: state.tickets || 0,
       active: false,
-      // disable button when no tickets OR level >= 15
-      cost: state.level >= 15 ? 9999 : 1,
+      cost: 1,                         // disabled iff count < 1
       onToggle: () => useTicket(),
-      btnText: () => state.level >= 15 ? '사용 불가' : '사용'
+      btnText: () => '사용'
     }
   ];
   itemListEl.innerHTML = '';
@@ -4035,27 +4032,37 @@ function buyTicket(amount) {
   saveState(); render();
 }
 
-// Use one +15 ticket — instantly bring current sword to +15.
-// Conditions: current level ≤ 14, ticket count ≥ 1.
+// Use one +15 ticket — store the currently equipped sword to the collection
+// (보관함) and equip a fresh +15 sword in its place. Player continues
+// enhancing from +15. The previous sword is preserved for later use.
+//
+// 효과 정의:
+// - 현재 검(레벨 무관)을 보관함으로 이동 (state.collection[lvl] += 1)
+// - 강화 슬롯에 새 +15 검 장착 (state.level = 15)
+// - 강화 시도/성공 통계엔 영향 없음 (강화가 아니라 새 검 발급)
+// - 통계 stats.stored += 1 (보관 카운트만 증가)
+// - +0 검은 보관 안 함 (의미 없음)
 async function useTicket() {
   if (busy) return;
   if ((state.tickets || 0) <= 0) { showToast('강화권 없음', 'fail'); return; }
-  if (state.level >= 15) { showToast('이미 +15 이상 — 사용 불가', 'fail'); return; }
   const prevLevel = state.level;
   state.tickets -= 1;
+  // Store the currently equipped sword (skip +0 — starting blank, no value)
+  if (prevLevel > 0) {
+    state.collection[prevLevel] = (state.collection[prevLevel] || 0) + 1;
+    state.stats.stored = (state.stats.stored || 0) + 1;
+    logMsg(`📦 +${prevLevel} ${SWORD_NAMES[prevLevel] || '검'} 자동 보관 (강화권 사용)`, 'store');
+  }
+  // Equip fresh +15 sword
   state.level = 15;
   state.unlocked[15] = true;
-  state.stats.attempts = (state.stats.attempts || 0) + 1;
-  state.stats.success = (state.stats.success || 0) + 1;
   if (state.level > (state.stats.best || 0)) state.stats.best = state.level;
-  // Unlock all intermediate levels too (cosmetic — collection grid will show them)
-  for (let i = prevLevel + 1; i <= 15; i++) state.unlocked[i] = true;
-  logMsg(`✦ +15강 강화권 사용! +${prevLevel} → +15 ${SWORD_NAMES[15]}`, 'unlock');
-  showToast(`+15 ${SWORD_NAMES[15]} 획득!`, 'success');
+  logMsg(`🎫 +15강 강화권 사용! +15 ${SWORD_NAMES[15] || '검'} 장착 (이전 +${prevLevel} 보관)`, 'unlock');
+  showToast(`+15 ${SWORD_NAMES[15] || '검'} 장착!`, 'success');
   playSound('success');
   saveState();
   render();
-  // Visual feedback
+  // Visual feedback on the freshly-equipped sword
   clearAnims();
   void swordContainer.offsetWidth;
   swordContainer.classList.add('success');
