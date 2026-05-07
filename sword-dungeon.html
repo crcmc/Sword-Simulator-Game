@@ -766,6 +766,52 @@ $('dungeon-side').addEventListener('click', e => {
   try { playSound('click'); } catch (e) {}
 });
 
+// ============================================================
+//  Horizontal swipe on the dungeon detail area (mobile primarily)
+//  → 좌→우 스와이프: 이전 잠금 해제 던전, 우→좌 스와이프: 다음.
+//  잠긴 티어는 건너뛰고, 양쪽 끝에서는 멈춤 (랩 안 함).
+// ============================================================
+(function setupDungeonSwipe() {
+  const detail = document.querySelector('.dungeon-detail');
+  if (!detail) return;
+  const SWIPE_MIN = 60;     // 가로 이동이 이만큼 이상이어야 인정
+  const RATIO = 1.2;        // 가로 이동이 세로보다 1.2배 이상 커야 가로 스와이프로 처리 (스크롤과 분리)
+  let sx = 0, sy = 0, tracking = false;
+
+  function nextUnlocked(from, dir) {
+    let t = from + dir;
+    while (t >= 0 && t <= 5) {
+      const prog = (state.dungeonProgress && state.dungeonProgress[t]) || { unlocked: t === 0 };
+      if (prog.unlocked) return t;
+      t += dir;
+    }
+    return null;
+  }
+  function applySwipe(dx) {
+    const dir = dx < 0 ? 1 : -1; // 우→좌(dx 음수) = 다음, 좌→우(dx 양수) = 이전
+    const next = nextUnlocked(activeTier, dir);
+    if (next == null) return;
+    activeTier = next;
+    render();
+    try { playSound('click'); } catch (_) {}
+  }
+  detail.addEventListener('touchstart', e => {
+    if (!e.touches || !e.touches[0]) return;
+    sx = e.touches[0].clientX;
+    sy = e.touches[0].clientY;
+    tracking = true;
+  }, { passive: true });
+  detail.addEventListener('touchend', e => {
+    if (!tracking || !e.changedTouches || !e.changedTouches[0]) { tracking = false; return; }
+    tracking = false;
+    const dx = e.changedTouches[0].clientX - sx;
+    const dy = e.changedTouches[0].clientY - sy;
+    if (Math.abs(dx) < SWIPE_MIN) return;
+    if (Math.abs(dx) < Math.abs(dy) * RATIO) return; // 세로 스크롤 의도면 무시
+    applySwipe(dx);
+  }, { passive: true });
+})();
+
 // Forge welcome
 $('nav-switch-btn').addEventListener('click', () => {
   showForgeWelcome(true);

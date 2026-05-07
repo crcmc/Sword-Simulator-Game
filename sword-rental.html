@@ -217,12 +217,38 @@
   /* Applicant detail modal */
   .applicant-modal {
     max-width: 480px;
+    width: 90%;
     text-align: left;
+    /* Long content scroll: title sticky on top, modal-actions sticky on bottom,
+       body in the middle scrolls. Cap at 90vh so it never overflows viewport. */
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    padding: 0;            /* override shared .modal { padding: 24px } */
+    overflow: hidden;      /* hide any rounded-corner bleed */
   }
   .applicant-modal h3 {
     text-align: center;
     font-size: 14px;
-    margin-bottom: 12px;
+    margin: 0;
+    padding: 14px 22px 10px;
+    border-bottom: 1px dashed var(--panel-border);
+    flex: 0 0 auto;
+  }
+  .applicant-modal #applicant-modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;  /* iOS momentum scroll */
+    overscroll-behavior: contain;
+    padding: 10px 20px 14px;
+    flex: 1 1 auto;
+    min-height: 0;          /* required for flex child to actually scroll */
+  }
+  .applicant-modal > .modal-actions {
+    padding: 10px 20px 14px;
+    border-top: 1px dashed var(--panel-border);
+    flex: 0 0 auto;
+    margin: 0;
+    background: var(--panel);
   }
   .applicant-modal .hero-portrait {
     text-align: center;
