@@ -43,8 +43,29 @@
     .dungeon-side {
       flex-direction: row;
       overflow-x: auto;
+      overflow-y: hidden;
       padding-bottom: 6px;
-      scrollbar-width: thin;
+      /* iOS momentum scroll + tell the browser this region pans horizontally
+         (otherwise touch is consumed as a tap on the buttons inside). */
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    /* Hide scrollbar (Chrome/Safari/iOS) — we use a fade hint instead */
+    .dungeon-side::-webkit-scrollbar { display: none; height: 0; }
+    /* Edge fade hint so users know the strip is scrollable */
+    .dungeon-side-wrap {
+      position: relative;
+    }
+    .dungeon-side-wrap::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0; bottom: 6px;
+      width: 28px;
+      pointer-events: none;
+      background: linear-gradient(90deg, transparent, var(--bg-dark) 90%);
     }
   }
   .dungeon-card {
@@ -60,7 +81,11 @@
     min-width: 0;
   }
   @media (max-width: 800px) {
-    .dungeon-card { min-width: 140px; flex-shrink: 0; }
+    .dungeon-card {
+      min-width: 140px;
+      flex-shrink: 0;
+      scroll-snap-align: center;
+    }
   }
   .dungeon-card:hover:not(.locked) {
     background: rgba(0,0,0,0.6);
@@ -95,7 +120,40 @@
   .dungeon-card[data-tier="5"] { border-left-color: #ffd700; }
 
   /* Right dungeon detail */
-  .dungeon-detail { min-width: 0; }
+  .dungeon-detail {
+    min-width: 0;
+    /* Allow vertical scroll, capture horizontal pan as swipe */
+    touch-action: pan-y;
+  }
+  /* Arrow nav buttons (also help desktop where swipe is unnatural) */
+  .dungeon-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .dungeon-nav button {
+    background: rgba(0,0,0,0.4);
+    border: 2px solid var(--panel-border);
+    color: var(--text);
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.1s;
+  }
+  .dungeon-nav button:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .dungeon-nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .dungeon-nav .pos {
+    color: var(--text-dim);
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
   .dungeon-banner {
     background: linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.2));
     border: 2px solid var(--panel-border);
@@ -390,8 +448,15 @@
 </div>
 
 <div class="dungeon-wrap">
-  <div class="dungeon-side" id="dungeon-side"></div>
+  <div class="dungeon-side-wrap">
+    <div class="dungeon-side" id="dungeon-side"></div>
+  </div>
   <div class="dungeon-detail">
+    <div class="dungeon-nav">
+      <button id="dungeon-prev" type="button" aria-label="이전 던전">◀ 이전</button>
+      <span class="pos" id="dungeon-pos"></span>
+      <button id="dungeon-next" type="button" aria-label="다음 던전">다음 ▶</button>
+    </div>
     <div class="dungeon-banner" id="dungeon-banner"></div>
     <div id="floor-list"></div>
   </div>
@@ -438,9 +503,35 @@ function render() {
   $('nav-active').textContent = (state.rentals || []).length;
 
   renderDungeonSide();
+  renderDungeonNav();
   renderBanner();
   renderFloors();
   renderRecentLog();
+  // After DOM updates, center the active card in the horizontal strip (mobile)
+  requestAnimationFrame(() => {
+    const active = document.querySelector('.dungeon-card.active');
+    if (active && active.scrollIntoView) {
+      try { active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+    }
+  });
+}
+
+function renderDungeonNav() {
+  const prevTier = nextUnlockedTier(activeTier, -1);
+  const nextTier = nextUnlockedTier(activeTier, 1);
+  $('dungeon-prev').disabled = prevTier == null;
+  $('dungeon-next').disabled = nextTier == null;
+  $('dungeon-pos').textContent = `${activeTier + 1} / 6`;
+}
+
+function nextUnlockedTier(from, dir) {
+  let t = from + dir;
+  while (t >= 0 && t <= 5) {
+    const prog = (state.dungeonProgress && state.dungeonProgress[t]) || { unlocked: t === 0 };
+    if (prog.unlocked) return t;
+    t += dir;
+  }
+  return null;
 }
 
 function floorLabel(n) {
@@ -774,22 +865,14 @@ $('dungeon-side').addEventListener('click', e => {
 (function setupDungeonSwipe() {
   const detail = document.querySelector('.dungeon-detail');
   if (!detail) return;
-  const SWIPE_MIN = 60;     // 가로 이동이 이만큼 이상이어야 인정
-  const RATIO = 1.2;        // 가로 이동이 세로보다 1.2배 이상 커야 가로 스와이프로 처리 (스크롤과 분리)
-  let sx = 0, sy = 0, tracking = false;
+  const SWIPE_MIN = 40;       // 임계값 완화 (60→40)
+  const RATIO = 1.0;          // 가로 ≥ 세로 정도면 가로 스와이프로 인정
+  const MAX_DURATION = 800;   // 너무 천천히 움직이면 스와이프 아닌 것으로 간주
+  let sx = 0, sy = 0, st = 0, tracking = false;
 
-  function nextUnlocked(from, dir) {
-    let t = from + dir;
-    while (t >= 0 && t <= 5) {
-      const prog = (state.dungeonProgress && state.dungeonProgress[t]) || { unlocked: t === 0 };
-      if (prog.unlocked) return t;
-      t += dir;
-    }
-    return null;
-  }
   function applySwipe(dx) {
-    const dir = dx < 0 ? 1 : -1; // 우→좌(dx 음수) = 다음, 좌→우(dx 양수) = 이전
-    const next = nextUnlocked(activeTier, dir);
+    const dir = dx < 0 ? 1 : -1;
+    const next = nextUnlockedTier(activeTier, dir);
     if (next == null) return;
     activeTier = next;
     render();
@@ -799,6 +882,7 @@ $('dungeon-side').addEventListener('click', e => {
     if (!e.touches || !e.touches[0]) return;
     sx = e.touches[0].clientX;
     sy = e.touches[0].clientY;
+    st = Date.now();
     tracking = true;
   }, { passive: true });
   detail.addEventListener('touchend', e => {
@@ -806,11 +890,49 @@ $('dungeon-side').addEventListener('click', e => {
     tracking = false;
     const dx = e.changedTouches[0].clientX - sx;
     const dy = e.changedTouches[0].clientY - sy;
+    const dt = Date.now() - st;
+    if (dt > MAX_DURATION) return;
     if (Math.abs(dx) < SWIPE_MIN) return;
-    if (Math.abs(dx) < Math.abs(dy) * RATIO) return; // 세로 스크롤 의도면 무시
+    if (Math.abs(dx) < Math.abs(dy) * RATIO) return;
     applySwipe(dx);
   }, { passive: true });
+
+  // Pointer events fallback (covers desktop trackpad / mouse drag if anyone uses it,
+  // and some browsers where touchend doesn't fire reliably).
+  let pdown = null;
+  detail.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pdown = { x: e.clientX, y: e.clientY, t: Date.now(), pt: e.pointerType };
+  });
+  detail.addEventListener('pointerup', e => {
+    if (!pdown) return;
+    const dx = e.clientX - pdown.x;
+    const dy = e.clientY - pdown.y;
+    const dt = Date.now() - pdown.t;
+    const wasMouse = pdown.pt === 'mouse';
+    pdown = null;
+    if (dt > MAX_DURATION) return;
+    if (Math.abs(dx) < SWIPE_MIN) return;
+    if (Math.abs(dx) < Math.abs(dy) * RATIO) return;
+    if (wasMouse) applySwipe(dx); // touch case already handled by touchend
+  });
 })();
+
+// Wire up nav arrow buttons
+$('dungeon-prev').addEventListener('click', () => {
+  const t = nextUnlockedTier(activeTier, -1);
+  if (t == null) return;
+  activeTier = t;
+  render();
+  try { playSound('click'); } catch (_) {}
+});
+$('dungeon-next').addEventListener('click', () => {
+  const t = nextUnlockedTier(activeTier, 1);
+  if (t == null) return;
+  activeTier = t;
+  render();
+  try { playSound('click'); } catch (_) {}
+});
 
 // Forge welcome
 $('nav-switch-btn').addEventListener('click', () => {
