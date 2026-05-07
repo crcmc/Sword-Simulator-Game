@@ -33,12 +33,8 @@
     }
   }
 
-  /* Left dungeon sidebar */
-  .dungeon-side-wrap {
-    /* Without this, flex/grid children may refuse to shrink below their content
-       size, which is what makes the strip push horizontally on mobile. */
-    min-width: 0;
-  }
+  /* Dungeon selector grid — 6 dungeons fit on one screen so no scroll/swipe needed.
+     Desktop: vertical sidebar (240px column). Mobile: 3×2 grid above detail. */
   .dungeon-side {
     display: flex;
     flex-direction: column;
@@ -46,31 +42,10 @@
   }
   @media (max-width: 800px) {
     .dungeon-side {
-      flex-direction: row;
-      overflow-x: auto;
-      overflow-y: hidden;
-      padding-bottom: 6px;
-      /* iOS momentum scroll + tell the browser this region pans horizontally
-         (otherwise touch is consumed as a tap on the buttons inside). */
-      -webkit-overflow-scrolling: touch;
-      touch-action: pan-x;
-      scroll-snap-type: x proximity;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-    }
-    /* Hide scrollbar (Chrome/Safari/iOS) — we use a fade hint instead */
-    .dungeon-side::-webkit-scrollbar { display: none; height: 0; }
-    /* Edge fade hint so users know the strip is scrollable */
-    .dungeon-side-wrap {
-      position: relative;
-    }
-    .dungeon-side-wrap::after {
-      content: '';
-      position: absolute;
-      top: 0; right: 0; bottom: 6px;
-      width: 28px;
-      pointer-events: none;
-      background: linear-gradient(90deg, transparent, var(--bg-dark) 90%);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-auto-rows: 1fr;
+      gap: 6px;
     }
   }
   .dungeon-card {
@@ -87,10 +62,20 @@
   }
   @media (max-width: 800px) {
     .dungeon-card {
-      min-width: 140px;
-      flex-shrink: 0;
-      scroll-snap-align: center;
+      padding: 8px 10px;
+      text-align: center;
+      border-left-width: 2px;
+      border-top-width: 4px;
     }
+    .dungeon-card .dname { font-size: 12px; }
+    .dungeon-card .dmeta { font-size: 9px; }
+    /* Tier color shifts to top border on mobile (looks cleaner in grid cells) */
+    .dungeon-card[data-tier="0"] { border-top-color: #cdd5e0; border-left-color: var(--panel-border); }
+    .dungeon-card[data-tier="1"] { border-top-color: #9bd4ff; border-left-color: var(--panel-border); }
+    .dungeon-card[data-tier="2"] { border-top-color: #4d6dff; border-left-color: var(--panel-border); }
+    .dungeon-card[data-tier="3"] { border-top-color: #c060ff; border-left-color: var(--panel-border); }
+    .dungeon-card[data-tier="4"] { border-top-color: #ff5060; border-left-color: var(--panel-border); }
+    .dungeon-card[data-tier="5"] { border-top-color: #ffd700; border-left-color: var(--panel-border); }
   }
   .dungeon-card:hover:not(.locked) {
     background: rgba(0,0,0,0.6);
@@ -127,10 +112,6 @@
   /* Right dungeon detail */
   .dungeon-detail {
     min-width: 0;
-    /* Allow vertical scroll natively; horizontal & pinch handled by JS via
-       pointer events. iOS Safari가 pan-y만 두면 horizontal 시 pointercancel을
-       던지는 케이스가 있어 pinch-zoom을 더해 두면 비교적 안정적. */
-    touch-action: pan-y pinch-zoom;
   }
   /* Arrow nav buttons (also help desktop where swipe is unnatural) */
   .dungeon-nav {
@@ -455,9 +436,7 @@
 </div>
 
 <div class="dungeon-wrap">
-  <div class="dungeon-side-wrap">
-    <div class="dungeon-side" id="dungeon-side"></div>
-  </div>
+  <div class="dungeon-side" id="dungeon-side"></div>
   <div class="dungeon-detail">
     <div class="dungeon-nav">
       <button id="dungeon-prev" type="button" aria-label="이전 던전">◀ 이전</button>
@@ -514,29 +493,6 @@ function render() {
   renderBanner();
   renderFloors();
   renderRecentLog();
-  // After DOM updates, center the active card in the horizontal strip (mobile).
-  // IMPORTANT: do NOT use Element.scrollIntoView — that scrolls every scrollable
-  // ancestor including the document body, which combined with body's
-  // overflow-x:hidden causes the visible page to be pushed right (a known
-  // regression seen on iOS Safari). Set scrollLeft on .dungeon-side directly.
-  requestAnimationFrame(() => {
-    const sideEl = document.getElementById('dungeon-side');
-    if (!sideEl) return;
-    const active = sideEl.querySelector('.dungeon-card.active');
-    if (!active) return;
-    const target = active.offsetLeft - (sideEl.clientWidth / 2) + (active.clientWidth / 2);
-    try {
-      sideEl.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
-    } catch (_) {
-      sideEl.scrollLeft = Math.max(0, target);
-    }
-    // Defensive: if any earlier code accidentally scrolled the document
-    // horizontally (overflow-x:hidden does NOT clamp scrollLeft on all
-    // browsers), reset it. Idempotent — no side effect when already 0.
-    if (window.scrollX !== 0 || (document.documentElement && document.documentElement.scrollLeft)) {
-      window.scrollTo({ left: 0, top: window.scrollY });
-    }
-  });
 }
 
 function renderDungeonNav() {
@@ -879,92 +835,6 @@ $('dungeon-side').addEventListener('click', e => {
   render();
   try { playSound('click'); } catch (e) {}
 });
-
-// ============================================================
-//  Horizontal swipe on the dungeon detail area
-//  → 좌→우 스와이프: 이전 잠금 해제 던전, 우→좌 스와이프: 다음.
-//  잠긴 티어는 건너뛰고, 양쪽 끝에서는 멈춤 (랩 안 함).
-//
-//  ※ 디버그 로그 [swipe]는 안정화 확인 후 제거 예정.
-// ============================================================
-(function setupDungeonSwipe() {
-  const detail = document.querySelector('.dungeon-detail');
-  if (!detail) {
-    console.warn('[swipe] .dungeon-detail not found');
-    return;
-  }
-  console.debug('[swipe] handler attached to', detail, 'PointerEvent supported:', 'PointerEvent' in window);
-
-  const SWIPE_MIN = 35;
-  const RATIO = 1.0;
-  const MAX_DURATION = 1000;
-
-  // Shared session tracker — pointer events take priority; touch only used if pointer
-  // events didn't initialize a session (some legacy WebViews).
-  let session = null;
-
-  function startSession(x, y, kind) {
-    session = { x, y, t: Date.now(), kind };
-    console.debug('[swipe] start', kind, 'x=' + x, 'y=' + y);
-  }
-  function endSession(x, y, kind) {
-    if (!session) { console.debug('[swipe] end ignored: no session', kind); return; }
-    // If the kind doesn't match the session origin, skip — avoids double-fire when
-    // both touch + pointer events are emitted by iOS Safari.
-    if (session.kind !== kind && !(session.kind === 'pointer:touch' && kind === 'touch')) {
-      console.debug('[swipe] end ignored: kind mismatch', session.kind, '→', kind);
-      return;
-    }
-    const dx = x - session.x;
-    const dy = y - session.y;
-    const dt = Date.now() - session.t;
-    session = null;
-    console.debug('[swipe] end', kind, 'dx=' + dx, 'dy=' + dy, 'dt=' + dt + 'ms');
-    if (dt > MAX_DURATION) { console.debug('[swipe] reject: too slow'); return; }
-    if (Math.abs(dx) < SWIPE_MIN) { console.debug('[swipe] reject: dx<' + SWIPE_MIN); return; }
-    if (Math.abs(dx) < Math.abs(dy) * RATIO) { console.debug('[swipe] reject: vertical dominant'); return; }
-    const dir = dx < 0 ? 1 : -1;
-    const next = nextUnlockedTier(activeTier, dir);
-    if (next == null) { console.debug('[swipe] reject: no unlocked tier in dir', dir); return; }
-    console.debug('[swipe] applied: tier ' + activeTier + ' → ' + next);
-    activeTier = next;
-    render();
-    try { playSound('click'); } catch (_) {}
-  }
-  function cancelSession(reason) {
-    if (session) console.debug('[swipe] cancel', reason);
-    session = null;
-  }
-
-  // ---- Pointer Events (primary on iOS 13+, modern browsers) ----
-  if ('PointerEvent' in window) {
-    detail.addEventListener('pointerdown', e => {
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
-      // Capture so subsequent events keep flowing to this element even if
-      // user's finger drifts to another region.
-      try { detail.setPointerCapture(e.pointerId); } catch (_) {}
-      startSession(e.clientX, e.clientY, 'pointer:' + e.pointerType);
-    });
-    detail.addEventListener('pointerup', e => {
-      endSession(e.clientX, e.clientY, 'pointer:' + e.pointerType);
-    });
-    detail.addEventListener('pointercancel', () => cancelSession('pointercancel'));
-  }
-
-  // ---- Touch events fallback ----
-  // Only used if pointer event did NOT start a session (e.g. older WebViews or
-  // edge cases where iOS doesn't fire pointer events for the touch first).
-  detail.addEventListener('touchstart', e => {
-    if (session) return; // pointer already tracking
-    if (!e.touches || !e.touches[0]) return;
-    startSession(e.touches[0].clientX, e.touches[0].clientY, 'touch');
-  }, { passive: true });
-  detail.addEventListener('touchend', e => {
-    if (!e.changedTouches || !e.changedTouches[0]) return;
-    endSession(e.changedTouches[0].clientX, e.changedTouches[0].clientY, 'touch');
-  }, { passive: true });
-  detail.addEventListener('touchcancel', () => cancelSession('touchcancel'), { passive: true });
-})();
 
 // Wire up nav arrow buttons
 $('dungeon-prev').addEventListener('click', () => {
