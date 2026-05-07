@@ -468,9 +468,15 @@
       <div class="admin-row"><label>+0 시도 당 철 비용</label><input type="number" id="ad-startIronCost" step="1" min="0"><span class="unit">개</span></div>
     </div>
     <div class="admin-section">
-      <h3>티어 소환 비용</h3>
-      <div class="desc">자원 cost = base × 2<sup>(level - tierMin)</sup>. base 1 일 때 티어 내 비용은 1, 2, 4, 8, 16. base 2 면 두 배.</div>
-      <div class="admin-row"><label>소환 base 비용</label><input type="number" id="ad-summonBaseCost" step="1" min="1"><span class="unit">×</span></div>
+      <h3>티어 소환 비용 (티어별 고정 수량)</h3>
+      <div class="desc">티어별 1회 소환에 필요한 자원 수량 (1~99999). 비어있거나 0 이면 아래 legacy 공식(base × 2<sup>sublevel</sup>) 으로 폴백.</div>
+      <div class="admin-row"><label>T0 소환 비용 (강철)</label><input type="number" id="ad-summonTierCost-0" step="1" min="1" max="99999"><span class="unit">개</span></div>
+      <div class="admin-row"><label>T1 소환 비용 (미스릴)</label><input type="number" id="ad-summonTierCost-1" step="1" min="1" max="99999"><span class="unit">개</span></div>
+      <div class="admin-row"><label>T2 소환 비용 (오리하르콘)</label><input type="number" id="ad-summonTierCost-2" step="1" min="1" max="99999"><span class="unit">개</span></div>
+      <div class="admin-row"><label>T3 소환 비용 (비브라늄)</label><input type="number" id="ad-summonTierCost-3" step="1" min="1" max="99999"><span class="unit">개</span></div>
+      <div class="admin-row"><label>T4 소환 비용 (아다만티움)</label><input type="number" id="ad-summonTierCost-4" step="1" min="1" max="99999"><span class="unit">개</span></div>
+      <div class="admin-row"><label>T5 소환 비용 (언옵테늄)</label><input type="number" id="ad-summonTierCost-5" step="1" min="1" max="99999"><span class="unit">개</span></div>
+      <div class="admin-row"><label>소환 base 비용 (legacy)</label><input type="number" id="ad-summonBaseCost" step="1" min="1"><span class="unit">×</span></div>
     </div>
   </div>
 

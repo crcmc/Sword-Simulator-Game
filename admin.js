@@ -80,6 +80,18 @@ function populateForm() {
   $('ad-startIronCost').value = balance.startIronCost;
   $('ad-summonBaseCost').value = balance.summonBaseCost;
 
+  // Per-tier summon cost (T0~T5) — 1~99999
+  const summonCostDefaults = { 0: 1, 1: 1, 2: 3, 3: 5, 4: 25, 5: 100 };
+  const summonCostCfg = balance.summonTierCost || {};
+  for (let t = 0; t < 6; t++) {
+    const el = $('ad-summonTierCost-' + t);
+    if (!el) continue;
+    const v = summonCostCfg[t] != null ? summonCostCfg[t]
+            : summonCostCfg[String(t)] != null ? summonCostCfg[String(t)]
+            : summonCostDefaults[t];
+    el.value = v;
+  }
+
   // Material
   $('ad-materialStartLvl').value = balance.materialStartLvl;
   $('ad-materialOffset').value = balance.materialOffset;
@@ -235,6 +247,15 @@ function readForm() {
   next.startingIron = intv('ad-startingIron');
   next.startIronCost = intv('ad-startIronCost');
   next.summonBaseCost = Math.max(1, intv('ad-summonBaseCost'));
+  // Per-tier summon cost (T0~T5) — clamp 1~99999
+  next.summonTierCost = {};
+  for (let t = 0; t < 6; t++) {
+    const el = document.getElementById('ad-summonTierCost-' + t);
+    if (!el) continue;
+    const raw = parseInt(el.value, 10);
+    const v = Number.isFinite(raw) ? raw : 1;
+    next.summonTierCost[t] = Math.max(1, Math.min(99999, v));
+  }
   next.materialStartLvl = intv('ad-materialStartLvl');
   next.materialOffset = intv('ad-materialOffset');
   // Advanced tab — tier mismatch + applicant rules

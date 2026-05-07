@@ -115,6 +115,13 @@ function rollFailure(level) {
   return 'maintain';
 }
 function getSummonCost(level) {
+  const tier = getTier(level);
+  const cfg = balance.summonTierCost;
+  if (cfg) {
+    const v = cfg[tier] != null ? cfg[tier] : cfg[String(tier)];
+    if (v != null && v > 0) return Math.max(1, Math.min(99999, Math.floor(v)));
+  }
+  // Legacy fallback (exponential): base × 2^(sublevel)
   const sublevel = getSubLevel(level);
   return Math.max(1, balance.summonBaseCost) * Math.pow(2, sublevel);
 }

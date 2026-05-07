@@ -36,6 +36,14 @@ const BALANCE_DEFAULTS = {
   "startingIron": 10,
   "startIronCost": 1,
   "summonBaseCost": 1,
+  "summonTierCost": {
+    "0": 1,
+    "1": 1,
+    "2": 3,
+    "3": 5,
+    "4": 25,
+    "5": 100
+  },
   "materialStartLvl": 19,
   "materialOffset": 18,
   "successRates": [

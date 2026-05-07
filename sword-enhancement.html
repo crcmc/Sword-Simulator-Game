@@ -3206,6 +3206,7 @@ function renderSummonPanel() {
     const range = summonRange(t);
     const minCost = getSummonCost(range.min);
     const maxCost = getSummonCost(range.max);
+    const costStr = (minCost === maxCost) ? `${minCost}` : `${minCost}~${maxCost}`;
     const tierColor = TIER_COLORS[t];
     const enough = cheats.infiniteMaterials || have >= minCost;
     const disabled = enough && !busy ? '' : 'disabled';
@@ -3216,7 +3217,7 @@ function renderSummonPanel() {
           <span class="res-count">${balance.resourceNames[t]}: ${have.toLocaleString()}</span>
         </div>
         <div class="info">
-          <span class="cost">${minCost}~${maxCost} ${balance.resourceNames[t]}</span>
+          <span class="cost">${costStr} ${balance.resourceNames[t]}</span>
           <span class="out">+${range.min}~+${range.max} 가중치</span>
         </div>
       </div>
@@ -3595,6 +3596,13 @@ function summonRange(tier) {
 }
 
 function getSummonCost(level) {
+  const tier = getTier(level);
+  const cfg = balance.summonTierCost;
+  if (cfg) {
+    const v = cfg[tier] != null ? cfg[tier] : cfg[String(tier)];
+    if (v != null && v > 0) return Math.max(1, Math.min(99999, Math.floor(v)));
+  }
+  // Legacy fallback (exponential): base × 2^(sublevel)
   const sublevel = getSubLevel(level);
   return Math.max(1, balance.summonBaseCost) * Math.pow(2, sublevel);
 }
