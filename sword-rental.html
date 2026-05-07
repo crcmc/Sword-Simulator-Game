@@ -330,6 +330,36 @@
     border-color: var(--accent);
     font-weight: 600;
   }
+  .applicant-modal .dungeon-btn {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    padding: 5px 11px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.1s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .applicant-modal .dungeon-btn .tag {
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+  }
+  .applicant-modal .dungeon-btn:hover:not([disabled]) { border-color: var(--accent); }
+  .applicant-modal .dungeon-btn.active {
+    background: rgba(255,215,0,0.12);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .applicant-modal .dungeon-btn.active .tag { color: var(--accent); }
+  .applicant-modal .dungeon-btn[disabled],
+  .applicant-modal .dungeon-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 
   /* Active rental rows */
   .rental-list { display: flex; flex-direction: column; gap: 6px; max-height: 480px; overflow-y: auto; }
@@ -538,6 +568,7 @@ let selectedSwordLevel = -1;
 let selectedApplicantId = null;
 let pendingApplicantId = null;
 let pendingFloor = 1; // floor selected in applicant modal
+let pendingDungeonTier = null; // dungeon tier selected in applicant modal (null = use applicant's desired)
 
 // "1층", "지하 1층", "지하 2층" 식 표기
 function floorLabel(n) {
@@ -796,8 +827,10 @@ function showApplicantModal(applicantId) {
   if (!a) return;
   pendingApplicantId = applicantId;
   selectedApplicantId = applicantId; // also update center display
-  // Default selected floor = highest unlocked challenge (bestFloor + 1)
-  const prog = (state.dungeonProgress && state.dungeonProgress[a.desiredDungeonTier]) || { bestFloor: 0 };
+  // Default selected dungeon = applicant's desired (existing behavior)
+  pendingDungeonTier = a.desiredDungeonTier;
+  // Default selected floor = highest unlocked challenge (bestFloor + 1) for that dungeon
+  const prog = (state.dungeonProgress && state.dungeonProgress[pendingDungeonTier]) || { bestFloor: 0 };
   pendingFloor = (prog.bestFloor || 0) + 1;
   renderApplicantModalContent();
   $('applicant-modal-bg').classList.add('show');
@@ -808,10 +841,16 @@ function renderApplicantModalContent() {
   if (!pendingApplicantId) return;
   const a = (state.applicants || []).find(x => x.id === pendingApplicantId);
   if (!a) return;
-  const tier = a.desiredDungeonTier;
+
+  // Use selected dungeon tier (default = applicant's desired). Players can pick
+  // any unlocked dungeon ≤ desiredDungeonTier (downgrade-only, no upgrade).
+  if (pendingDungeonTier == null) pendingDungeonTier = a.desiredDungeonTier;
+  if (pendingDungeonTier > a.desiredDungeonTier) pendingDungeonTier = a.desiredDungeonTier;
+  if (pendingDungeonTier < 0) pendingDungeonTier = 0;
+  const tier = pendingDungeonTier;
   const tierColor = TIER_COLORS[a.tier];
   const dungeon = balance.dungeons[tier];
-  const prog = (state.dungeonProgress && state.dungeonProgress[tier]) || { bestFloor: 0 };
+  const prog = (state.dungeonProgress && state.dungeonProgress[tier]) || { bestFloor: 0, unlocked: tier === 0 };
   const maxAvailableFloor = (prog.bestFloor || 0) + 1;
   // Clamp pendingFloor in case progression changed since modal opened
   if (pendingFloor < 1) pendingFloor = 1;
@@ -823,6 +862,22 @@ function renderApplicantModalContent() {
   const heroCut = Math.floor(reward.gold * a.payRate / 100);
   const playerGold = reward.gold - heroCut;
 
+  // Dungeon buttons (T0 ~ a.desiredDungeonTier). Locked dungeons are disabled.
+  // Default desired tier marked as "★ 희망", lower tiers as "↓ 하향".
+  let dungeonButtons = '';
+  for (let t = 0; t <= a.desiredDungeonTier; t++) {
+    const dCfg = balance.dungeons[t];
+    const dProg = (state.dungeonProgress && state.dungeonProgress[t]) || { unlocked: t === 0 };
+    const unlocked = !!dProg.unlocked;
+    const isActive = t === pendingDungeonTier;
+    const cls = (isActive ? 'active ' : '') + (unlocked ? '' : 'disabled');
+    const tag = (t === a.desiredDungeonTier) ? '★ 희망' : '↓ 하향';
+    const lockMark = unlocked ? '' : '🔒 ';
+    const dColor = TIER_COLORS[t];
+    const disabledAttr = unlocked ? '' : 'disabled';
+    dungeonButtons += `<button class="dungeon-btn ${cls}" data-dungeon-tier="${t}" type="button" ${disabledAttr} title="티어 ${t}"><span style="color:${dColor}">${lockMark}${dCfg.name}</span> <span class="tag">${tag}</span></button>`;
+  }
+
   // Floor buttons (1 ~ maxAvailableFloor). Cleared = ✓, challenge = ★.
   let floorButtons = '';
   for (let f = 1; f <= maxAvailableFloor; f++) {
@@ -831,8 +886,12 @@ function renderApplicantModalContent() {
     floorButtons += `<button class="floor-btn ${cls}" data-floor="${f}" type="button">${tag} ${floorLabel(f)}</button>`;
   }
 
+  const downgradeNote = (tier < a.desiredDungeonTier)
+    ? `<div class="key" style="color:var(--text-dim); font-size:10px; margin-top:6px;">※ 희망 던전(${balance.dungeons[a.desiredDungeonTier].name})보다 ${a.desiredDungeonTier - tier}티어 낮은 던전으로 파견합니다.</div>`
+    : '';
+
   let summary = `<div class="key">선택 검:</div> <strong>+${selectedSwordLevel} ${SWORD_NAMES[selectedSwordLevel]}</strong> (티어 ${getTier(selectedSwordLevel)})<br>`;
-  summary += `<div class="key">희망 던전:</div> <strong>${dungeon.name}</strong> (티어 ${tier})${a.greedy ? ' <span class="warn">🎯 능력 이상 도전</span>' : ''}<br>`;
+  summary += `<div class="key">출정 던전:</div> <strong>${dungeon.name}</strong> (티어 ${tier})${a.greedy && tier === a.desiredDungeonTier ? ' <span class="warn">🎯 능력 이상 도전</span>' : ''}<br>`;
   summary += `<div class="key">출정 층:</div> <strong>${floorLabel(pendingFloor)}</strong><br>`;
   summary += `<div class="key">던전 성공률:</div> <span class="${rate >= 70 ? 'pos' : rate >= 30 ? 'warn' : 'neg'}">${rate}%</span><br>`;
   summary += `<div class="key">공략 소요 시간:</div> ${formatDuration(dur)}<br>`;
@@ -850,9 +909,10 @@ function renderApplicantModalContent() {
       <div class="stat-cell"><div class="label">민첩</div><div class="v">${a.stats.agility}</div></div>
       <div class="stat-cell"><div class="label">행운</div><div class="v">${a.stats.luck}</div></div>
     </div>
-    <div class="info-row"><span class="k">희망 던전</span><span class="v">${dungeon.name} (티어 ${tier})${a.greedy ? ' 🎯' : ''}</span></div>
+    <div class="info-row"><span class="k">희망 던전</span><span class="v">${balance.dungeons[a.desiredDungeonTier].name} (티어 ${a.desiredDungeonTier})${a.greedy ? ' 🎯' : ''}</span></div>
     <div class="info-row"><span class="k">희망 보수율</span><span class="v" style="color:var(--success);">${a.payRate}%</span></div>
     <div class="motivation">"${a.motivation}"</div>
+    <div class="floor-selector"><div class="key" style="margin-bottom:6px;">출정 던전 선택 (희망 ↓하향만 가능)</div><div class="floor-buttons">${dungeonButtons}</div>${downgradeNote}</div>
     <div class="floor-selector"><div class="key" style="margin-bottom:6px;">출정 층 선택 (최고 ${prog.bestFloor || 0}층 클리어)</div><div class="floor-buttons">${floorButtons}</div></div>
     <div class="summary">${summary}</div>
   `;
@@ -893,7 +953,17 @@ function confirmRent() {
   }
 
   const lvl = selectedSwordLevel;
-  const tier = a.desiredDungeonTier;
+  // Use the dungeon tier the player explicitly picked in the modal. Default
+  // = applicant's desiredDungeonTier. Clamped to ≤ desired (no upgrade) and
+  // requires the dungeon to be unlocked.
+  let tier = (typeof pendingDungeonTier === 'number') ? pendingDungeonTier : a.desiredDungeonTier;
+  if (tier < 0) tier = 0;
+  if (tier > a.desiredDungeonTier) tier = a.desiredDungeonTier;
+  const tierProg = (state.dungeonProgress && state.dungeonProgress[tier]) || { unlocked: tier === 0 };
+  if (!tierProg.unlocked) {
+    showToast('잠긴 던전 — 파견 불가', 'fail');
+    return;
+  }
   const cfg = balance.dungeons[tier];
   // Validate floor: must be ≤ bestFloor + 1
   const prog = (state.dungeonProgress && state.dungeonProgress[tier]) || { bestFloor: 0 };
@@ -1096,6 +1166,18 @@ document.addEventListener('click', e => {
   const fbtn = e.target.closest('.floor-btn');
   if (fbtn && fbtn.dataset.floor) {
     pendingFloor = parseInt(fbtn.dataset.floor, 10);
+    renderApplicantModalContent();
+    playSound('click');
+    return;
+  }
+  // Dungeon (tier) selector inside applicant modal
+  const dbtn = e.target.closest('.dungeon-btn');
+  if (dbtn && dbtn.dataset.dungeonTier && !dbtn.disabled) {
+    const newTier = parseInt(dbtn.dataset.dungeonTier, 10);
+    pendingDungeonTier = newTier;
+    // Reset floor selection to the highest unlocked challenge in the new dungeon
+    const dProg = (state.dungeonProgress && state.dungeonProgress[newTier]) || { bestFloor: 0 };
+    pendingFloor = (dProg.bestFloor || 0) + 1;
     renderApplicantModalContent();
     playSound('click');
     return;
