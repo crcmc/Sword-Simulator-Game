@@ -34,6 +34,11 @@
   }
 
   /* Left dungeon sidebar */
+  .dungeon-side-wrap {
+    /* Without this, flex/grid children may refuse to shrink below their content
+       size, which is what makes the strip push horizontally on mobile. */
+    min-width: 0;
+  }
   .dungeon-side {
     display: flex;
     flex-direction: column;
@@ -507,11 +512,27 @@ function render() {
   renderBanner();
   renderFloors();
   renderRecentLog();
-  // After DOM updates, center the active card in the horizontal strip (mobile)
+  // After DOM updates, center the active card in the horizontal strip (mobile).
+  // IMPORTANT: do NOT use Element.scrollIntoView — that scrolls every scrollable
+  // ancestor including the document body, which combined with body's
+  // overflow-x:hidden causes the visible page to be pushed right (a known
+  // regression seen on iOS Safari). Set scrollLeft on .dungeon-side directly.
   requestAnimationFrame(() => {
-    const active = document.querySelector('.dungeon-card.active');
-    if (active && active.scrollIntoView) {
-      try { active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+    const sideEl = document.getElementById('dungeon-side');
+    if (!sideEl) return;
+    const active = sideEl.querySelector('.dungeon-card.active');
+    if (!active) return;
+    const target = active.offsetLeft - (sideEl.clientWidth / 2) + (active.clientWidth / 2);
+    try {
+      sideEl.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+    } catch (_) {
+      sideEl.scrollLeft = Math.max(0, target);
+    }
+    // Defensive: if any earlier code accidentally scrolled the document
+    // horizontally (overflow-x:hidden does NOT clamp scrollLeft on all
+    // browsers), reset it. Idempotent — no side effect when already 0.
+    if (window.scrollX !== 0 || (document.documentElement && document.documentElement.scrollLeft)) {
+      window.scrollTo({ left: 0, top: window.scrollY });
     }
   });
 }
