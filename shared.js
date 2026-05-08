@@ -141,13 +141,15 @@ function defaultState() {
     deadSwords: [],
     applicants: [],
     lastApplicantGen: {},
+    // All dungeons' floor 1 is always accessible from the start.
+    // Floor 2+ is still gated by bestFloor (cleared previous floor).
     dungeonProgress: {
-      0: { unlocked: true,  bestFloor: 0 },
-      1: { unlocked: false, bestFloor: 0 },
-      2: { unlocked: false, bestFloor: 0 },
-      3: { unlocked: false, bestFloor: 0 },
-      4: { unlocked: false, bestFloor: 0 },
-      5: { unlocked: false, bestFloor: 0 }
+      0: { unlocked: true, bestFloor: 0 },
+      1: { unlocked: true, bestFloor: 0 },
+      2: { unlocked: true, bestFloor: 0 },
+      3: { unlocked: true, bestFloor: 0 },
+      4: { unlocked: true, bestFloor: 0 },
+      5: { unlocked: true, bestFloor: 0 }
     },
     stats: {
       attempts: 0, success: 0, fail: 0, broken: 0,
@@ -181,7 +183,18 @@ function loadState() {
       deadSwords: Array.isArray(parsed.deadSwords) ? parsed.deadSwords : def.deadSwords,
       applicants: Array.isArray(parsed.applicants) ? parsed.applicants : def.applicants,
       lastApplicantGen: Object.assign({}, def.lastApplicantGen, parsed.lastApplicantGen || {}),
-      dungeonProgress: Object.assign({}, def.dungeonProgress, parsed.dungeonProgress || {})
+      // Migration: force unlocked:true for all 6 tiers (floor 1 is always
+       // accessible). Preserve bestFloor from saved data when valid.
+       dungeonProgress: (() => {
+        const merged = {};
+        const saved = (parsed.dungeonProgress && typeof parsed.dungeonProgress === 'object') ? parsed.dungeonProgress : {};
+        for (let t = 0; t < 6; t++) {
+          const s = saved[t] || saved[String(t)] || {};
+          const bf = (typeof s.bestFloor === 'number' && s.bestFloor >= 0) ? Math.floor(s.bestFloor) : 0;
+          merged[t] = { unlocked: true, bestFloor: bf };
+        }
+        return merged;
+      })()
     });
   } catch (e) { return defaultState(); }
 }

@@ -504,9 +504,12 @@ function renderDungeonNav() {
 }
 
 function nextUnlockedTier(from, dir) {
+  // Floor 1 of every dungeon is always accessible, so every tier counts as
+  // unlocked here. Kept as a function (rather than a constant) so per-tier
+  // gating could be reintroduced later without rewriting callers.
   let t = from + dir;
   while (t >= 0 && t <= 5) {
-    const prog = (state.dungeonProgress && state.dungeonProgress[t]) || { unlocked: t === 0 };
+    const prog = (state.dungeonProgress && state.dungeonProgress[t]) || { unlocked: true };
     if (prog.unlocked) return t;
     t += dir;
   }
@@ -518,21 +521,20 @@ function floorLabel(n) {
 }
 
 function renderDungeonSide() {
+  // Every dungeon's floor 1 is accessible from the start, so dungeon cards
+  // never show a lock. (Per-floor locks are still rendered in renderFloors.)
   const bar = $('dungeon-side');
   let html = '';
   for (let t = 0; t < 6; t++) {
     const cfg = balance.dungeons[t];
-    const prog = state.dungeonProgress?.[t] || { unlocked: t === 0, bestFloor: 0 };
-    const cls = (t === activeTier ? 'active ' : '') + (prog.unlocked ? '' : 'locked');
+    const prog = state.dungeonProgress?.[t] || { unlocked: true, bestFloor: 0 };
+    const cls = (t === activeTier ? 'active' : '');
     const tcolor = TIER_COLORS[t];
     const activeCount = (state.rentals || []).filter(r => r.dungeonTier === t).length;
-    const lock = prog.unlocked ? '' : '🔒 ';
-    const meta = prog.unlocked
-      ? `T${t} · 최고 ${prog.bestFloor || 0}층` + (activeCount > 0 ? ` · 출정 ${activeCount}` : '')
-      : `T${t} · 잠김`;
+    const meta = `T${t} · 최고 ${prog.bestFloor || 0}층` + (activeCount > 0 ? ` · 출정 ${activeCount}` : '');
     html += `
       <button class="dungeon-card ${cls}" data-tier="${t}" type="button">
-        <span class="dname" style="color:${tcolor}">${lock}${cfg.name}</span>
+        <span class="dname" style="color:${tcolor}">${cfg.name}</span>
         <span class="dmeta">${meta}</span>
       </button>
     `;
@@ -542,13 +544,13 @@ function renderDungeonSide() {
 
 function renderBanner() {
   const cfg = balance.dungeons[activeTier];
-  const prog = state.dungeonProgress?.[activeTier] || { unlocked: activeTier === 0, bestFloor: 0 };
+  const prog = state.dungeonProgress?.[activeTier] || { unlocked: true, bestFloor: 0 };
   const reward = dungeonRewards(activeTier, 1);
   const tcolor = TIER_COLORS[activeTier];
   const banner = $('dungeon-banner');
   banner.style.borderTopColor = tcolor;
   banner.innerHTML = `
-    <h2 style="color:${tcolor}">${prog.unlocked ? '' : '🔒 '}${cfg.name}</h2>
+    <h2 style="color:${tcolor}">${cfg.name}</h2>
     <div class="dsub">티어 ${activeTier} · 자원: ${balance.resourceNames[activeTier]}</div>
     <div class="dstats">
       <span><span class="label">기본 소요</span><span class="v">${formatDur(cfg.durationMs)}</span></span>
@@ -561,13 +563,11 @@ function renderBanner() {
 }
 
 function renderFloors() {
+  // Floor 1 is always accessible (no per-dungeon lock screen). Floors above
+  // bestFloor + 1 still render as previews with the existing locked styling.
   const list = $('floor-list');
   const cfg = balance.dungeons[activeTier];
-  const prog = state.dungeonProgress?.[activeTier] || { unlocked: activeTier === 0, bestFloor: 0 };
-  if (!prog.unlocked) {
-    list.innerHTML = `<div class="floor-section locked"><div class="floor-header">🔒 ${cfg.name}</div><div class="lock-msg">이전 티어 던전을 1회 이상 클리어하세요.</div></div>`;
-    return;
-  }
+  const prog = state.dungeonProgress?.[activeTier] || { unlocked: true, bestFloor: 0 };
   const bestFloor = prog.bestFloor || 0;
   // Show floors 1 .. (bestFloor + 1) as accessible, plus 2 locked previews (max +3)
   const lastShown = bestFloor + 3;

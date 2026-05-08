@@ -853,8 +853,20 @@ function showApplicantModal(applicantId) {
   if (!a) return;
   pendingApplicantId = applicantId;
   selectedApplicantId = applicantId; // also update center display
-  // Default selected dungeon = applicant's desired (existing behavior)
-  pendingDungeonTier = a.desiredDungeonTier;
+  // Default selected dungeon = applicant's desired tier, but if (defensively)
+  // that dungeon is locked, fall back to highest unlocked tier ≤ desired.
+  // After the floor-1 default-unlock migration this branch should never trigger,
+  // but it provides a safety net for any future regression.
+  let defaultTier = a.desiredDungeonTier;
+  const desiredProg = (state.dungeonProgress && state.dungeonProgress[defaultTier]) || { unlocked: false };
+  if (!desiredProg.unlocked) {
+    for (let t = defaultTier - 1; t >= 0; t--) {
+      const tp = (state.dungeonProgress && state.dungeonProgress[t]) || { unlocked: t === 0 };
+      if (tp.unlocked) { defaultTier = t; break; }
+    }
+    if (defaultTier === a.desiredDungeonTier) defaultTier = 0; // last-resort
+  }
+  pendingDungeonTier = defaultTier;
   // Default selected floor = highest unlocked challenge (bestFloor + 1) for that dungeon
   const prog = (state.dungeonProgress && state.dungeonProgress[pendingDungeonTier]) || { bestFloor: 0 };
   pendingFloor = (prog.bestFloor || 0) + 1;
